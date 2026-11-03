@@ -3,6 +3,7 @@ import cors from 'cors';
 import express, { type Application } from 'express';
 import helmet from 'helmet';
 import { env } from './config/env';
+import { redisClient } from './config/redis';
 import { swaggerRouter } from './docs';
 import {
   globalErrorHandler,
@@ -61,6 +62,9 @@ app.get('/health', (_req, res) => {
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
       environment: env.NODE_ENV,
+      services: {
+        redis: redisClient.isOpen ? 'CONNECTED' : 'DISCONNECTED',
+      },
     },
   });
 });

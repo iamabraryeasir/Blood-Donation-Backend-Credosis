@@ -1,11 +1,15 @@
 import type { Server } from 'node:http';
 import { app } from './app';
 import { env } from './config/env';
+import { connectRedis, disconnectRedis } from './config/redis';
 
 let server: Server;
 
 const startServer = async (): Promise<void> => {
   try {
+    // Initialize Redis connection before opening HTTP port
+    await connectRedis();
+
     server = app.listen(env.PORT, () => {
       console.log('=======================================================');
       console.log('  Blood Donation Platform API Server Running');
@@ -46,7 +50,8 @@ const handleGracefulShutdown = async (signal: string): Promise<void> => {
       });
     }
 
-    // Future resource cleanups (e.g. database disconnects) can be awaited here
+    // Disconnect Redis
+    await disconnectRedis();
 
     console.log('Graceful shutdown completed.');
     process.exit(0);

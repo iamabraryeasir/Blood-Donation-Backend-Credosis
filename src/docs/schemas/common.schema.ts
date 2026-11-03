@@ -32,6 +32,11 @@ export const HealthStatusSchema = registry.register(
         uptime: z.number().openapi({ example: 12.34 }),
         timestamp: z.string().openapi({ example: '2026-11-03T02:40:00.000Z' }),
         environment: z.string().openapi({ example: 'development' }),
+        services: z
+          .object({
+            redis: z.string().openapi({ example: 'CONNECTED' }),
+          })
+          .optional(),
       }),
     })
     .openapi({ description: 'Service Health Status Envelope' }),
