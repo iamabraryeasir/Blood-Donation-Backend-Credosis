@@ -1,0 +1,15 @@
+model Profile {
+  id                     String     @id @default(uuid())
+  userId                 String     @unique
+  user                   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bloodGroup             BloodGroup
+  phone                  String     @unique
+  district               String
+  area                   String
+  lastDonationDate       DateTime?
+  isAvailableForDonation Boolean    @default(true)
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
+
+  @@index([bloodGroup, district, isAvailableForDonation])
+}

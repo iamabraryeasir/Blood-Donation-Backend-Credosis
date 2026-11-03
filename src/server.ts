@@ -2,12 +2,14 @@ import type { Server } from 'node:http';
 import { app } from './app';
 import { env } from './config/env';
 import { connectRedis, disconnectRedis } from './config/redis';
+import { connectDatabase, disconnectDatabase } from './utils/prisma';
 
 let server: Server;
 
 const startServer = async (): Promise<void> => {
   try {
-    // Initialize Redis connection before opening HTTP port
+    // Initialize Database and Redis connections before opening HTTP port
+    await connectDatabase();
     await connectRedis();
 
     server = app.listen(env.PORT, () => {
@@ -50,7 +52,8 @@ const handleGracefulShutdown = async (signal: string): Promise<void> => {
       });
     }
 
-    // Disconnect Redis
+    // Disconnect database and cache
+    await disconnectDatabase();
     await disconnectRedis();
 
     console.log('Graceful shutdown completed.');

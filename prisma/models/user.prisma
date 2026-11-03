@@ -1,0 +1,18 @@
+model User {
+  id                String             @id @default(uuid())
+  email             String             @unique
+  name              String
+  passwordHash      String
+  role              Role               @default(USER)
+  isVerified        Boolean            @default(false)
+  isProfileComplete Boolean            @default(false)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  profile           Profile?
+  bloodRequests     BloodRequest[]     @relation("RequesterRelation")
+  donationResponses DonationResponse[] @relation("DonorRelation")
+
+  @@index([email])
+}
+
