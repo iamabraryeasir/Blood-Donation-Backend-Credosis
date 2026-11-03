@@ -9,6 +9,7 @@ This document establishes the authoritative system architecture, domain models, 
 The platform facilitates emergency and planned blood donations by connecting recipients with verified donors. It enforces deterministic request lifecycles, strict medical compatibility, and data cleanliness.
 
 ### Core Stack
+
 - **Runtime:** Node.js (v20+)
 - **Language:** TypeScript 5 (Strict Mode, `ESNext`, `moduleResolution: bundler`)
 - **Web Framework:** Express.js 4
@@ -19,7 +20,9 @@ The platform facilitates emergency and planned blood donations by connecting rec
 - **Linting & Formatting:** Biome
 
 ### Modular Domain Isolation
+
 The codebase adheres to a Feature-Sliced Modular Architecture:
+
 - `src/modules/auth`: Two-step staged registration, OTP delivery, session tokens.
 - `src/modules/users`: Profile completion, donor availability, location metadata.
 - `src/modules/requests`: Blood request lifecycle, admin approval gate, filtering.
@@ -30,9 +33,11 @@ The codebase adheres to a Feature-Sliced Modular Architecture:
 ## 2. Decision Record: 2-Step Onboarding with Redis Data Staging
 
 ### Problem
+
 Traditional user registration persists unverified accounts directly into the relational database. In blood donation and emergency platforms, abandoned registrations, mistyped emails, and spam bots rapidly degrade primary key sequences, inflate database size, and necessitate complex background pruning jobs.
 
 ### Architectural Decision
+
 Registration is decoupled into a **Two-Step Onboarding Architecture** utilizing Redis as an ephemeral staging area.
 
 ```mermaid
@@ -74,17 +79,19 @@ sequenceDiagram
 ```
 
 ### Redis Key Taxonomy & Abuse Controls
-| Key Format | Type | TTL | Purpose / Rule |
-| :--- | :--- | :--- | :--- |
-| `onboarding:<email>` | String (JSON) | `900s` (15 min) | Holds `{ name, email, passwordHash, otp, attempts }`. Auto-purged on expiration. |
-| `resend-cooldown:<email>` | String | `60s` (1 min) | Enforces 60-second cooldown between consecutive OTP resend requests. |
-| `otp-attempts:<email>` | Counter | `900s` | Maximum 5 invalid attempts per session before the session is forcibly invalidated. |
+
+| Key Format                | Type          | TTL             | Purpose / Rule                                                                     |
+| :------------------------ | :------------ | :-------------- | :--------------------------------------------------------------------------------- |
+| `onboarding:<email>`      | String (JSON) | `900s` (15 min) | Holds `{ name, email, passwordHash, otp, attempts }`. Auto-purged on expiration.   |
+| `resend-cooldown:<email>` | String        | `60s` (1 min)   | Enforces 60-second cooldown between consecutive OTP resend requests.               |
+| `otp-attempts:<email>`    | Counter       | `900s`          | Maximum 5 invalid attempts per session before the session is forcibly invalidated. |
 
 ---
 
 ## 3. Decision Record: Blood Requests & Matching Engine
 
 ### 1. Request State Machine
+
 All blood requests strictly follow deterministic lifecycle states as dictated by `AGENTS.md`:
 
 ```mermaid
@@ -106,17 +113,21 @@ stateDiagram-v2
 ### 2. Matching Engine & Donor Response Rules
 
 #### A. Strict Blood Group Matching (MVP Rule)
+
 For the MVP, blood group matching enforces **Strict Exact Match**:
 $$\text{Donor.bloodGroup} \equiv \text{Request.bloodGroup}$$
 Cross-match biological compatibilities (e.g., $O^-$ universal donor) are deferred to post-MVP to minimize medical screening discrepancies in the initial release.
 
 #### B. Multiple Responders per Request
+
 - Multiple unique donors may respond to a single request (e.g., when a patient requires multiple units of blood or requires backup donors).
 - **Anti-Spam Invariant**: A donor can only submit **one** active response per request. Enforced via the compound database constraint:
   `@@unique([requestId, donorId])`
 
 #### C. Donor Eligibility & 90-Day Cooldown Gate
+
 When a donor attempts to respond to an active request, the response service validates:
+
 1. **Self-Donation Guard**: `request.requesterId !== donor.id`.
 2. **Profile Completion**: `donor.isProfileComplete === true`.
 3. **Availability Flag**: `donor.profile.isAvailableForDonation === true`.
@@ -126,11 +137,13 @@ When a donor attempts to respond to an active request, the response service vali
    If $\Delta t < 90\text{ days}$, the response is rejected with HTTP 400 (`AppError`).
 
 #### D. Mutual Contact Sharing
+
 To preserve donor privacy while expediting emergency logistics:
+
 - Unauthenticated users and non-participating donors cannot view donor or requester phone numbers.
 - Upon a successful `DonationResponse`:
-  - The **Donor** is returned the requester's `contactNumber`, `patientName`, and `hospitalName`.
-  - The **Requester** can query `GET /api/v1/requests/:id/responses` to view all responding donors with their verified `name`, `phone`, `bloodGroup`, and donation track record.
+    - The **Donor** is returned the requester's `contactNumber`, `patientName`, and `hospitalName`.
+    - The **Requester** can query `GET /api/v1/requests/:id/responses` to view all responding donors with their verified `name`, `phone`, `bloodGroup`, and donation track record.
 
 ---
 
@@ -261,50 +274,55 @@ model DonationResponse {
 ## 5. API Route Matrix & Access Control
 
 ### Authentication & Onboarding (`/api/v1/auth`)
-| Method | Path | Auth | Description |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/v1/auth/register` | Public | Stage registration in Redis, dispatch email OTP |
-| `POST` | `/api/v1/auth/verify-otp` | Public | Verify OTP, commit User to DB, issue JWT tokens |
-| `POST` | `/api/v1/auth/resend-otp` | Public (Rate-limited) | 60-second cooldown check, dispatch new OTP |
-| `POST` | `/api/v1/auth/login` | Public | Authenticate existing user, issue JWT tokens |
+
+| Method | Path                      | Auth                  | Description                                     |
+| :----- | :------------------------ | :-------------------- | :---------------------------------------------- |
+| `POST` | `/api/v1/auth/register`   | Public                | Stage registration in Redis, dispatch email OTP |
+| `POST` | `/api/v1/auth/verify-otp` | Public                | Verify OTP, commit User to DB, issue JWT tokens |
+| `POST` | `/api/v1/auth/resend-otp` | Public (Rate-limited) | 60-second cooldown check, dispatch new OTP      |
+| `POST` | `/api/v1/auth/login`      | Public                | Authenticate existing user, issue JWT tokens    |
 
 ### User Profile (`/api/v1/users`)
-| Method | Path | Auth | Description |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/v1/users/complete-profile` | `USER` | Step 2 profile setup (blood group, phone, district) |
-| `GET` | `/api/v1/users/me` | `USER` | Get authenticated user profile and donation metrics |
-| `PATCH` | `/api/v1/users/availability` | `USER` | Toggle `isAvailableForDonation` |
+
+| Method  | Path                             | Auth   | Description                                         |
+| :------ | :------------------------------- | :----- | :-------------------------------------------------- |
+| `POST`  | `/api/v1/users/complete-profile` | `USER` | Step 2 profile setup (blood group, phone, district) |
+| `GET`   | `/api/v1/users/me`               | `USER` | Get authenticated user profile and donation metrics |
+| `PATCH` | `/api/v1/users/availability`     | `USER` | Toggle `isAvailableForDonation`                     |
 
 ### Blood Requests (`/api/v1/requests`)
-| Method | Path | Auth | Description |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/v1/requests` | `USER` (Profile Complete) | Create new request (enters `PENDING_APPROVAL`) |
-| `GET` | `/api/v1/requests` | Public / `USER` | Filter & paginate `ACTIVE` requests |
-| `GET` | `/api/v1/requests/:id` | Public / `USER` | Retrieve request details |
-| `PATCH` | `/api/v1/requests/:id/fulfill` | Requester / `ADMIN` | Mark request as `FULFILLED` |
+
+| Method  | Path                           | Auth                      | Description                                    |
+| :------ | :----------------------------- | :------------------------ | :--------------------------------------------- |
+| `POST`  | `/api/v1/requests`             | `USER` (Profile Complete) | Create new request (enters `PENDING_APPROVAL`) |
+| `GET`   | `/api/v1/requests`             | Public / `USER`           | Filter & paginate `ACTIVE` requests            |
+| `GET`   | `/api/v1/requests/:id`         | Public / `USER`           | Retrieve request details                       |
+| `PATCH` | `/api/v1/requests/:id/fulfill` | Requester / `ADMIN`       | Mark request as `FULFILLED`                    |
 
 ### Donor Response Management (`/api/v1/requests/:id/responses`)
-| Method | Path | Auth | Description |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/v1/requests/:id/responses` | `USER` (Profile Complete) | Respond to active request (Strict match + 90d check) |
-| `GET` | `/api/v1/requests/:id/responses` | Requester / `ADMIN` | List all responding donors with verified contact details |
+
+| Method | Path                             | Auth                      | Description                                              |
+| :----- | :------------------------------- | :------------------------ | :------------------------------------------------------- |
+| `POST` | `/api/v1/requests/:id/responses` | `USER` (Profile Complete) | Respond to active request (Strict match + 90d check)     |
+| `GET`  | `/api/v1/requests/:id/responses` | Requester / `ADMIN`       | List all responding donors with verified contact details |
 
 ### Administrative Oversight (`/api/v1/admin`)
-| Method | Path | Auth | Description |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/v1/admin/requests/pending` | `ADMIN` | List all requests awaiting verification |
-| `PATCH` | `/api/v1/admin/requests/:id/approve` | `ADMIN` | Transition request to `ACTIVE` |
-| `PATCH` | `/api/v1/admin/requests/:id/reject` | `ADMIN` | Transition request to `REJECTED` with reason |
+
+| Method  | Path                                 | Auth    | Description                                  |
+| :------ | :----------------------------------- | :------ | :------------------------------------------- |
+| `GET`   | `/api/v1/admin/requests/pending`     | `ADMIN` | List all requests awaiting verification      |
+| `PATCH` | `/api/v1/admin/requests/:id/approve` | `ADMIN` | Transition request to `ACTIVE`               |
+| `PATCH` | `/api/v1/admin/requests/:id/reject`  | `ADMIN` | Transition request to `REJECTED` with reason |
 
 ---
 
 ## 6. Implementation Sequence & Execution Order
 
 When proceeding to code implementation, tasks must follow this strict dependency order:
+
 1. **Infrastructure Connections:** Initialize Redis client with connection lifecycle management (`connectRedis`, `disconnectRedis`). Configure Nodemailer with SMTP/Ethereal support.
 2. **Data Modeling:** Initialize Prisma schema, generate client, and execute PostgreSQL migration.
 3. **Module 1 - Auth (Step 1):** Build Redis staging service, OTP generator, email dispatcher, and verification endpoint.
 4. **Module 2 - User Profile (Step 2):** Implement profile completion endpoint and user availability state management.
 5. **Module 3 - Requests:** Implement request creation (`PENDING_APPROVAL`), admin approval/rejection gates, and public feed filtering.
 6. **Module 4 - Donor Matching & Responses:** Implement strict matching engine, 90-day donation cooldown validation, and mutual contact disclosure.
-
