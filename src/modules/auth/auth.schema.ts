@@ -102,3 +102,95 @@ registry.registerPath({
     },
   },
 });
+
+export const VerifyOtpInputSchema = registry.register(
+  'VerifyOtpInput',
+  z.object({
+    email: z
+      .string({ required_error: 'Email is required' })
+      .trim()
+      .email('Invalid email address format')
+      .toLowerCase()
+      .openapi({
+        example: 'abrar@example.com',
+        description: 'Email address used during registration',
+      }),
+    otp: z.coerce
+      .string({ required_error: 'OTP is required' })
+      .trim()
+      .regex(/^[0-9]{6}$/, 'OTP must be exactly 6 numeric digits')
+      .openapi({ example: '890496', description: '6-digit verification code' }),
+  }),
+);
+
+export type VerifyOtpInput = z.infer<typeof VerifyOtpInputSchema>;
+
+export const VerifyOtpResponseSchema = registry.register(
+  'VerifyOtpResponse',
+  z.object({
+    success: z.literal(true).openapi({ example: true }),
+    statusCode: z.literal(201).openapi({ example: 201 }),
+    message: z.string().openapi({
+      example: 'Email verified successfully. Please complete your profile to continue.',
+    }),
+    data: z.object({
+      user: z.object({
+        id: z.string().uuid().openapi({ example: 'e4b2d354-9a57-4f51-b8d2-5a9e3240e111' }),
+        name: z.string().openapi({ example: 'Abrar Yeasir' }),
+        email: z.string().openapi({ example: 'abrar@example.com' }),
+        role: z.enum(['USER', 'ADMIN']).openapi({ example: 'USER' }),
+        isVerified: z.boolean().openapi({ example: true }),
+        isProfileComplete: z.boolean().openapi({ example: false }),
+        createdAt: z.string().datetime().openapi({ example: '2026-11-05T02:00:00.000Z' }),
+      }),
+      tokens: z.object({
+        accessToken: z.string().openapi({ example: 'eyJhbGciOiJIUzI1Ni...' }),
+        refreshToken: z.string().openapi({ example: 'eyJhbGciOiJIUzI1Ni...' }),
+      }),
+    }),
+  }),
+);
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/auth/verify-otp',
+  tags: ['Auth'],
+  summary: 'Verify registration OTP and create user (Step 1B)',
+  description:
+    'Verifies the 6-digit OTP code against the Redis staging session. On success, creates the User record in PostgreSQL, purges the Redis staging keys, sets the HTTP-only refresh token cookie, and returns the authenticated user data with JWT tokens.',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: VerifyOtpInputSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    201: {
+      description: 'Email verified and user account created successfully',
+      content: {
+        'application/json': {
+          schema: VerifyOtpResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: 'Invalid OTP code or expired verification session',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    429: {
+      description: 'Maximum verification attempts exceeded (session revoked)',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});

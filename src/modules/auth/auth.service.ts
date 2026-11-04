@@ -3,8 +3,9 @@ import bcrypt from 'bcryptjs';
 import { redisClient } from '../../config/redis';
 import { AppError } from '../../errors/AppError';
 import { emailService } from '../../services/email.service';
+import { type AuthTokens, generateTokens } from '../../utils';
 import { prisma } from '../../utils/prisma';
-import type { RegisterInput } from './auth.schema';
+import type { RegisterInput, VerifyOtpInput } from './auth.schema';
 
 export interface StagedOnboardingUser {
   name: string;
@@ -13,6 +14,21 @@ export interface StagedOnboardingUser {
   otp: string;
   attempts: number;
   createdAt: string;
+}
+
+export interface VerifiedUser {
+  id: string;
+  name: string;
+  email: string;
+  role: 'USER' | 'ADMIN';
+  isVerified: boolean;
+  isProfileComplete: boolean;
+  createdAt: Date;
+}
+
+export interface VerifyOtpResult {
+  user: VerifiedUser;
+  tokens: AuthTokens;
 }
 
 export class AuthService {
@@ -93,6 +109,114 @@ export class AuthService {
     return {
       email: normalizedEmail,
       expiresInSeconds: ONBOARDING_TTL_SECONDS,
+    };
+  }
+
+  /**
+   * Verify registration OTP: validates attempts limit, compares OTP timing-safely,
+   * atomically creates the user in PostgreSQL, evicts Redis keys, and generates JWT tokens.
+   */
+  async verifyOtp(input: VerifyOtpInput): Promise<VerifyOtpResult> {
+    const normalizedEmail = input.email.trim().toLowerCase();
+    const stagingKey = `onboarding:${normalizedEmail}`;
+    const cooldownKey = `resend-cooldown:${normalizedEmail}`;
+
+    // 1. Fetch staged registration payload from Redis
+    const stagedData = await redisClient.get(stagingKey);
+    if (!stagedData) {
+      throw new AppError('Verification session expired or invalid. Please register again.', 400);
+    }
+
+    const stagedUser: StagedOnboardingUser = JSON.parse(stagedData);
+
+    // 2. Enforce brute-force attempt limits (max 5 attempts)
+    if (stagedUser.attempts >= 5) {
+      await redisClient.del([stagingKey, cooldownKey]);
+      throw new AppError(
+        'Too many failed attempts. Your verification session has been invalidated. Please register again.',
+        429,
+      );
+    }
+
+    // 3. Timing-safe OTP comparison
+    const providedOtpBuffer = Buffer.from(input.otp.trim());
+    const storedOtpBuffer = Buffer.from(stagedUser.otp);
+
+    const isMatch =
+      providedOtpBuffer.length === storedOtpBuffer.length &&
+      crypto.timingSafeEqual(providedOtpBuffer, storedOtpBuffer);
+
+    if (!isMatch) {
+      const remainingTtl = await redisClient.ttl(stagingKey);
+      stagedUser.attempts += 1;
+
+      if (stagedUser.attempts >= 5) {
+        await redisClient.del([stagingKey, cooldownKey]);
+        throw new AppError(
+          'Too many failed attempts. Your verification session has been invalidated. Please register again.',
+          429,
+        );
+      }
+
+      // Re-save with updated attempts and preserve remaining TTL
+      if (remainingTtl > 0) {
+        await redisClient.set(stagingKey, JSON.stringify(stagedUser), {
+          EX: remainingTtl,
+        });
+      }
+
+      const attemptsLeft = 5 - stagedUser.attempts;
+      throw new AppError(
+        `Invalid verification code. ${attemptsLeft} attempt${attemptsLeft === 1 ? '' : 's'} remaining.`,
+        400,
+      );
+    }
+
+    // 4. Atomic promotion to PostgreSQL
+    const createdUser = await prisma.$transaction(async (tx) => {
+      // Concurrency guard: ensure account wasn't created in parallel
+      const existing = await tx.user.findUnique({
+        where: { email: normalizedEmail },
+      });
+
+      if (existing) {
+        throw new AppError('An account with this email already exists', 409);
+      }
+
+      return await tx.user.create({
+        data: {
+          name: stagedUser.name,
+          email: stagedUser.email,
+          passwordHash: stagedUser.passwordHash,
+          role: 'USER',
+          isVerified: true,
+          isProfileComplete: false,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          isVerified: true,
+          isProfileComplete: true,
+          createdAt: true,
+        },
+      });
+    });
+
+    // 5. Purge Redis staging session
+    await redisClient.del([stagingKey, cooldownKey]);
+
+    // 6. Generate JWT Authentication Tokens
+    const tokens = generateTokens({
+      userId: createdUser.id,
+      email: createdUser.email,
+      role: createdUser.role,
+    });
+
+    return {
+      user: createdUser,
+      tokens,
     };
   }
 }
