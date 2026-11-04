@@ -1,10 +1,10 @@
 import { Router } from 'express';
+import { authRouter } from '../modules/auth/auth.routes';
 
 const rootRouter = Router();
 
-// Future domain routes (e.g., users, requests) will be registered here:
-// rootRouter.use('/users', userRouter);
-// rootRouter.use('/requests', requestRouter);
+// Domain Routes
+rootRouter.use('/auth', authRouter);
 
 rootRouter.get('/', (_req, res) => {
   res.status(200).json({
