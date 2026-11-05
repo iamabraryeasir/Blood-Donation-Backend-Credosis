@@ -2,6 +2,7 @@ import type { Role } from '@prisma/client';
 import type { NextFunction, Request, Response } from 'express';
 import { AppError } from '../errors';
 import { verifyAccessToken } from '../utils/jwt';
+import { prisma } from '../utils/prisma';
 
 /**
  * Middleware to authenticate requests via Bearer JWT Access Token.
@@ -42,4 +43,36 @@ export const authorize = (...allowedRoles: Role[]) => {
 
     next();
   };
+};
+
+/**
+ * Middleware to enforce that the authenticated user has completed Step 2 Profile setup.
+ */
+export const requireProfileComplete = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  if (!req.user) {
+    throw new AppError('Unauthorized: Authentication required', 401);
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: req.user.userId },
+    select: { isProfileComplete: true, isVerified: true },
+  });
+
+  if (!user) {
+    throw new AppError('User account not found', 404);
+  }
+
+  if (!user.isVerified) {
+    throw new AppError('Your account is not verified. Please verify your email first.', 403);
+  }
+
+  if (!user.isProfileComplete) {
+    throw new AppError('You must complete your profile before creating a blood request', 403);
+  }
+
+  next();
 };
