@@ -5,6 +5,7 @@ import {
     requireProfileComplete,
     validateRequest,
 } from '../../middlewares';
+import { responseRouter } from '../responses/response.routes';
 import {
     approveRequestHandler,
     createRequestHandler,
@@ -45,6 +46,9 @@ requestRouter.get(
     validateRequest(BloodRequestIdParamSchema, 'params'),
     getRequestByIdHandler,
 );
+
+// Mount Module 4: Donor Response Sub-routes (POST /:id/responses, GET /:id/responses)
+requestRouter.use('/:id/responses', responseRouter);
 
 // PATCH /api/v1/requests/:id/approve (Approve pending blood donation request - Admin Only)
 requestRouter.patch(
