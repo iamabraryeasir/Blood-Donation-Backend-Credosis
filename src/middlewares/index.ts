@@ -1,3 +1,4 @@
+export * from './authMiddleware';
 export * from './globalErrorHandler';
 export * from './notFoundHandler';
 export * from './rateLimiter';
