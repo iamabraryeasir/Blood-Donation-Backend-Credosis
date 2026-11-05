@@ -341,6 +341,65 @@ export class RequestService {
 
         return updatedRequest;
     }
+
+    /**
+     * Mark an active blood donation request as fulfilled.
+     * Only the original requester or an administrator can execute this action.
+     * Transitions status from ACTIVE to FULFILLED.
+     */
+    async fulfillRequest(requestId: string, currentUser: JwtUserPayload) {
+        const existing = await prisma.bloodRequest.findUnique({
+            where: { id: requestId },
+        });
+
+        if (!existing) {
+            throw new AppError('Blood donation request not found', 404);
+        }
+
+        const isOwner = currentUser.userId === existing.requesterId;
+        const isAdmin = currentUser.role === 'ADMIN';
+
+        if (!isOwner && !isAdmin) {
+            throw new AppError(
+                'Forbidden: Only the requester or an administrator can fulfill this request',
+                403,
+            );
+        }
+
+        if (existing.status === 'FULFILLED') {
+            throw new AppError('Request has already been marked as fulfilled', 400);
+        }
+
+        if (existing.status !== 'ACTIVE') {
+            throw new AppError(
+                `Cannot fulfill request with status '${existing.status}'. Only ACTIVE requests can be marked as fulfilled.`,
+                400,
+            );
+        }
+
+        const updatedRequest = await prisma.bloodRequest.update({
+            where: { id: requestId },
+            data: {
+                status: 'FULFILLED',
+            },
+            include: {
+                requester: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+                _count: {
+                    select: {
+                        responses: true,
+                    },
+                },
+            },
+        });
+
+        return updatedRequest;
+    }
 }
 
 export const requestService = new RequestService();

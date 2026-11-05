@@ -8,6 +8,7 @@ import {
 import {
     approveRequestHandler,
     createRequestHandler,
+    fulfillRequestHandler,
     getActiveRequestsHandler,
     getPendingRequestsHandler,
     getRequestByIdHandler,
@@ -60,6 +61,14 @@ requestRouter.patch(
     validateRequest(BloodRequestIdParamSchema, 'params'),
     validateRequest(RejectBloodRequestInputSchema, 'body'),
     rejectRequestHandler,
+);
+
+// PATCH /api/v1/requests/:id/fulfill (Mark active blood donation request as fulfilled - Requester or Admin)
+requestRouter.patch(
+    '/:id/fulfill',
+    checkAuth(),
+    validateRequest(BloodRequestIdParamSchema, 'params'),
+    fulfillRequestHandler,
 );
 
 // POST /api/v1/requests (Create a new blood donation request)

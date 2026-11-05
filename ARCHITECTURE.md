@@ -301,7 +301,7 @@ model DonationResponse {
 | ✅     | `GET`   | `/api/v1/requests/:id`         | Public / `USER`           | Retrieve request details                                     |
 | ✅     | `PATCH` | `/api/v1/requests/:id/approve` | `ADMIN`                   | Transition request from `PENDING_APPROVAL` to `ACTIVE`       |
 | ✅     | `PATCH` | `/api/v1/requests/:id/reject`  | `ADMIN`                   | Transition request from `PENDING_APPROVAL` to `REJECTED`     |
-| ❌     | `PATCH` | `/api/v1/requests/:id/fulfill` | Requester / `ADMIN`       | Transition request from `ACTIVE` to `FULFILLED`              |
+| ✅     | `PATCH` | `/api/v1/requests/:id/fulfill` | Requester / `ADMIN`       | Transition request from `ACTIVE` to `FULFILLED`              |
 
 ### Donor Response Management (`/api/v1/requests/:id/responses`)
 

@@ -675,3 +675,75 @@ registry.registerPath({
         },
     },
 });
+
+export const FulfillBloodRequestResponseSchema = registry.register(
+    'FulfillBloodRequestResponse',
+    z.object({
+        success: z.literal(true).openapi({ example: true }),
+        statusCode: z.literal(200).openapi({ example: 200 }),
+        message: z.string().openapi({
+            example: 'Blood donation request marked as fulfilled successfully',
+        }),
+        data: z.object({
+            request: ActiveBloodRequestItemSchema.extend({
+                status: z.literal('FULFILLED').openapi({ example: 'FULFILLED' }),
+                contactNumber: z.string().nullable().openapi({ example: '01712345678' }),
+            }),
+        }),
+    }),
+);
+
+registry.registerPath({
+    method: 'patch',
+    path: '/api/v1/requests/{id}/fulfill',
+    tags: ['Requests'],
+    summary: 'Mark an active blood request as fulfilled (Requester or Admin)',
+    description:
+        'Transitions a blood donation request from ACTIVE to FULFILLED status. Only the creator of the request or a system administrator can perform this action.',
+    security: [{ bearerAuth: [] }],
+    request: {
+        params: BloodRequestIdParamSchema,
+    },
+    responses: {
+        200: {
+            description: 'Blood request marked as fulfilled successfully',
+            content: {
+                'application/json': {
+                    schema: FulfillBloodRequestResponseSchema,
+                },
+            },
+        },
+        400: {
+            description: 'Invalid transition (request is not in ACTIVE status)',
+            content: {
+                'application/json': {
+                    schema: ErrorResponseSchema,
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized (missing or invalid Bearer JWT token)',
+            content: {
+                'application/json': {
+                    schema: ErrorResponseSchema,
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden (only requester or admin can fulfill this request)',
+            content: {
+                'application/json': {
+                    schema: ErrorResponseSchema,
+                },
+            },
+        },
+        404: {
+            description: 'Blood donation request not found',
+            content: {
+                'application/json': {
+                    schema: ErrorResponseSchema,
+                },
+            },
+        },
+    },
+});

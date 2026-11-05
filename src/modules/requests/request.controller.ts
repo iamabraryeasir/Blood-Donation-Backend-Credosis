@@ -68,6 +68,23 @@ export const rejectRequestHandler = catchAsync(async (req, res) => {
     });
 });
 
+export const fulfillRequestHandler = catchAsync(async (req, res) => {
+    if (!req.user) {
+        throw new AppError('Unauthorized: Authentication required', 401);
+    }
+
+    const result = await requestService.fulfillRequest(req.params.id as string, req.user);
+
+    res.status(200).json({
+        success: true,
+        statusCode: 200,
+        message: 'Blood donation request marked as fulfilled successfully',
+        data: {
+            request: result,
+        },
+    });
+});
+
 export const createRequestHandler = catchAsync(async (req, res) => {
     if (!req.user) {
         throw new AppError('Unauthorized: Authentication required', 401);
