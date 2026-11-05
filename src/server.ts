@@ -16,15 +16,21 @@ const startServer = async (): Promise<void> => {
         // Seed default admin account
         await seedAdmin();
 
+        const baseUrl =
+            process.env.RENDER_EXTERNAL_URL ||
+            (env.NODE_ENV === 'production' && process.env.BASE_URL
+                ? process.env.BASE_URL
+                : `http://localhost:${env.PORT}`);
+
         server = app.listen(env.PORT, '0.0.0.0', () => {
             console.log('=======================================================');
             console.log('  Blood Donation Platform API Server Running');
             console.log(`  Environment : ${env.NODE_ENV}`);
             console.log(`  Port        : ${env.PORT}`);
-            console.log(`  Health Check: http://localhost:${env.PORT}/health`);
-            console.log(`  API Base    : http://localhost:${env.PORT}/api/v1`);
+            console.log(`  Health Check: ${baseUrl}/health`);
+            console.log(`  API Base    : ${baseUrl}/api/v1`);
             if (env.ENABLE_DOCS) {
-                console.log(`  API Docs    : http://localhost:${env.PORT}/api-docs`);
+                console.log(`  API Docs    : ${baseUrl}/api-docs`);
             }
             console.log('=======================================================');
         });

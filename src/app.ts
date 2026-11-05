@@ -56,8 +56,20 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Cookie parsing
 app.use(cookieParser());
 
-// Liveness & health check endpoint
-app.get('/health', (_req, res) => {
+// Root ping & discovery endpoint
+app.get('/', (_req, res) => {
+    res.status(200).json({
+        success: true,
+        message: 'Blood Donation Platform API is live and operational',
+        environment: env.NODE_ENV,
+        health: '/health',
+        api: '/api/v1',
+        ...(env.ENABLE_DOCS ? { docs: '/api-docs' } : {}),
+    });
+});
+
+// Liveness & health check endpoint (supports both /health and /api/v1/health)
+app.get(['/health', '/api/v1/health'], (_req, res) => {
     res.status(200).json({
         success: true,
         message: 'Blood Donation Platform API is healthy',

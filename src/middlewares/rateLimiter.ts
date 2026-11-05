@@ -7,7 +7,8 @@ export const globalRateLimiter = rateLimit({
     limit: 100, // 100 requests per IP per window
     standardHeaders: 'draft-8',
     legacyHeaders: false,
-    skip: (req: Request) => req.path === '/health',
+    skip: (req: Request) =>
+        req.path === '/health' || req.path === '/api/v1/health' || req.path === '/',
     handler: (_req: Request, res: Response) => {
         res.status(429).json({
             success: false,
