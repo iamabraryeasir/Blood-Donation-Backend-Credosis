@@ -142,4 +142,3 @@ export function calculatePaginationMeta(
     hasPrevPage: page > 1,
   };
 }
-
