@@ -31,3 +31,14 @@ export const verifyOtpHandler = catchAsync(async (req, res) => {
     data: result,
   });
 });
+
+export const resendOtpHandler = catchAsync(async (req, res) => {
+  const result = await authService.resendOtp(req.body);
+
+  res.status(200).json({
+    success: true,
+    statusCode: 200,
+    message: 'A new verification code has been sent to your email.',
+    data: result,
+  });
+});

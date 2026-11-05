@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authRateLimiter, validateRequest } from '../../middlewares';
-import { registerHandler, verifyOtpHandler } from './auth.controller';
-import { RegisterInputSchema, VerifyOtpInputSchema } from './auth.schema';
+import { registerHandler, resendOtpHandler, verifyOtpHandler } from './auth.controller';
+import { RegisterInputSchema, ResendOtpInputSchema, VerifyOtpInputSchema } from './auth.schema';
 
 const authRouter = Router();
 
@@ -19,6 +19,14 @@ authRouter.post(
   authRateLimiter,
   validateRequest(VerifyOtpInputSchema),
   verifyOtpHandler,
+);
+
+// POST /api/v1/auth/resend-otp (Resend OTP code with 60s cooldown check)
+authRouter.post(
+  '/resend-otp',
+  authRateLimiter,
+  validateRequest(ResendOtpInputSchema),
+  resendOtpHandler,
 );
 
 export { authRouter };

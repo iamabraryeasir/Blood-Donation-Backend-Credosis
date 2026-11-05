@@ -5,7 +5,7 @@ import { AppError } from '../../errors/AppError';
 import { emailService } from '../../services/email.service';
 import { type AuthTokens, generateTokens } from '../../utils';
 import { prisma } from '../../utils/prisma';
-import type { RegisterInput, VerifyOtpInput } from './auth.schema';
+import type { RegisterInput, ResendOtpInput, VerifyOtpInput } from './auth.schema';
 
 export interface StagedOnboardingUser {
   name: string;
@@ -217,6 +217,90 @@ export class AuthService {
     return {
       user: createdUser,
       tokens,
+    };
+  }
+
+  /**
+   * Resend verification OTP: validates user uniqueness, checks 60s cooldown,
+   * fetches active Redis staging session, generates fresh OTP, resets attempts to 0,
+   * extends session TTL to 15m, and dispatches email.
+   */
+  async resendOtp(input: ResendOtpInput): Promise<{
+    email: string;
+    cooldownSeconds: number;
+    expiresInSeconds: number;
+  }> {
+    const normalizedEmail = input.email.trim().toLowerCase();
+    const stagingKey = `onboarding:${normalizedEmail}`;
+    const cooldownKey = `resend-cooldown:${normalizedEmail}`;
+
+    // 1. Check if user is already verified in PostgreSQL
+    const existingUser = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (existingUser) {
+      throw new AppError('This account is already verified. Please sign in.', 409);
+    }
+
+    // 2. Check for active resend cooldown in Redis (60-second throttling)
+    const cooldownTtl = await redisClient.ttl(cooldownKey);
+    if (cooldownTtl > 0) {
+      throw new AppError(
+        `Please wait ${cooldownTtl} seconds before requesting another verification code`,
+        429,
+      );
+    }
+
+    // 3. Fetch staged registration payload from Redis
+    const stagedData = await redisClient.get(stagingKey);
+    if (!stagedData) {
+      throw new AppError('Verification session expired or invalid. Please register again.', 400);
+    }
+
+    const stagedUser: StagedOnboardingUser = JSON.parse(stagedData);
+
+    // 4. Generate fresh 6-digit numeric OTP
+    const newOtp = crypto.randomInt(100000, 1000000).toString();
+
+    // 5. Update staged payload: reset failed attempts to 0 and assign new OTP
+    stagedUser.otp = newOtp;
+    stagedUser.attempts = 0;
+
+    const ONBOARDING_TTL_SECONDS = 15 * 60; // 15 minutes
+    const RESEND_COOLDOWN_SECONDS = 60; // 60 seconds
+
+    await redisClient.set(stagingKey, JSON.stringify(stagedUser), {
+      EX: ONBOARDING_TTL_SECONDS,
+    });
+
+    await redisClient.set(cooldownKey, '1', {
+      EX: RESEND_COOLDOWN_SECONDS,
+    });
+
+    // 6. Dispatch email with new OTP
+    try {
+      await emailService.sendTemplateEmail({
+        to: normalizedEmail,
+        subject: 'Your new verification code - Blood Donation Platform',
+        templateName: 'otp-verification',
+        data: {
+          name: stagedUser.name,
+          otp: newOtp,
+          expiresInMinutes: 15,
+        },
+      });
+    } catch (error) {
+      // Clear cooldown key if dispatch fails so user can immediately retry
+      await redisClient.del(cooldownKey);
+      console.error('Failed to send resend OTP verification email:', error);
+      throw new AppError('Failed to dispatch verification email. Please try again.', 500);
+    }
+
+    return {
+      email: normalizedEmail,
+      cooldownSeconds: RESEND_COOLDOWN_SECONDS,
+      expiresInSeconds: ONBOARDING_TTL_SECONDS,
     };
   }
 }

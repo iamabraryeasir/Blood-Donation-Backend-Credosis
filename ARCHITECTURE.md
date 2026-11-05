@@ -275,44 +275,44 @@ model DonationResponse {
 
 ### Authentication & Onboarding (`/api/v1/auth`)
 
-| Method | Path                      | Auth                  | Description                                     |
-| :----- | :------------------------ | :-------------------- | :---------------------------------------------- |
-| `POST` | `/api/v1/auth/register`   | Public                | Stage registration in Redis, dispatch email OTP |
-| `POST` | `/api/v1/auth/verify-otp` | Public                | Verify OTP, commit User to DB, issue JWT tokens |
-| `POST` | `/api/v1/auth/resend-otp` | Public (Rate-limited) | 60-second cooldown check, dispatch new OTP      |
-| `POST` | `/api/v1/auth/login`      | Public                | Authenticate existing user, issue JWT tokens    |
+| Status | Method | Path                      | Auth                  | Description                                     |
+| :----- | :----- | :------------------------ | :-------------------- | :---------------------------------------------- |
+| ✅     | `POST` | `/api/v1/auth/register`   | Public                | Stage registration in Redis, dispatch email OTP |
+| ✅     | `POST` | `/api/v1/auth/verify-otp` | Public                | Verify OTP, commit User to DB, issue JWT tokens |
+| ✅     | `POST` | `/api/v1/auth/resend-otp` | Public (Rate-limited) | 60-second cooldown check, dispatch new OTP      |
+| ❌     | `POST` | `/api/v1/auth/login`      | Public                | Authenticate existing user, issue JWT tokens    |
 
 ### User Profile (`/api/v1/users`)
 
-| Method  | Path                             | Auth   | Description                                         |
-| :------ | :------------------------------- | :----- | :-------------------------------------------------- |
-| `POST`  | `/api/v1/users/complete-profile` | `USER` | Step 2 profile setup (blood group, phone, district) |
-| `GET`   | `/api/v1/users/me`               | `USER` | Get authenticated user profile and donation metrics |
-| `PATCH` | `/api/v1/users/availability`     | `USER` | Toggle `isAvailableForDonation`                     |
+| Status | Method  | Path                             | Auth   | Description                                         |
+| :----- | :------ | :------------------------------- | :----- | :-------------------------------------------------- |
+| ❌     | `POST`  | `/api/v1/users/complete-profile` | `USER` | Step 2 profile setup (blood group, phone, district) |
+| ❌     | `GET`   | `/api/v1/users/me`               | `USER` | Get authenticated user profile and donation metrics |
+| ❌     | `PATCH` | `/api/v1/users/availability`     | `USER` | Toggle `isAvailableForDonation`                     |
 
 ### Blood Requests (`/api/v1/requests`)
 
-| Method  | Path                           | Auth                      | Description                                    |
-| :------ | :----------------------------- | :------------------------ | :--------------------------------------------- |
-| `POST`  | `/api/v1/requests`             | `USER` (Profile Complete) | Create new request (enters `PENDING_APPROVAL`) |
-| `GET`   | `/api/v1/requests`             | Public / `USER`           | Filter & paginate `ACTIVE` requests            |
-| `GET`   | `/api/v1/requests/:id`         | Public / `USER`           | Retrieve request details                       |
-| `PATCH` | `/api/v1/requests/:id/fulfill` | Requester / `ADMIN`       | Mark request as `FULFILLED`                    |
+| Status | Method  | Path                           | Auth                      | Description                                    |
+| :----- | :------ | :----------------------------- | :------------------------ | :--------------------------------------------- |
+| ❌     | `POST`  | `/api/v1/requests`             | `USER` (Profile Complete) | Create new request (enters `PENDING_APPROVAL`) |
+| ❌     | `GET`   | `/api/v1/requests`             | Public / `USER`           | Filter & paginate `ACTIVE` requests            |
+| ❌     | `GET`   | `/api/v1/requests/:id`         | Public / `USER`           | Retrieve request details                       |
+| ❌     | `PATCH` | `/api/v1/requests/:id/fulfill` | Requester / `ADMIN`       | Mark request as `FULFILLED`                    |
 
 ### Donor Response Management (`/api/v1/requests/:id/responses`)
 
-| Method | Path                             | Auth                      | Description                                              |
-| :----- | :------------------------------- | :------------------------ | :------------------------------------------------------- |
-| `POST` | `/api/v1/requests/:id/responses` | `USER` (Profile Complete) | Respond to active request (Strict match + 90d check)     |
-| `GET`  | `/api/v1/requests/:id/responses` | Requester / `ADMIN`       | List all responding donors with verified contact details |
+| Status | Method | Path                             | Auth                      | Description                                              |
+| :----- | :----- | :------------------------------- | :------------------------ | :------------------------------------------------------- |
+| ❌     | `POST` | `/api/v1/requests/:id/responses` | `USER` (Profile Complete) | Respond to active request (Strict match + 90d check)     |
+| ❌     | `GET`  | `/api/v1/requests/:id/responses` | Requester / `ADMIN`       | List all responding donors with verified contact details |
 
 ### Administrative Oversight (`/api/v1/admin`)
 
-| Method  | Path                                 | Auth    | Description                                  |
-| :------ | :----------------------------------- | :------ | :------------------------------------------- |
-| `GET`   | `/api/v1/admin/requests/pending`     | `ADMIN` | List all requests awaiting verification      |
-| `PATCH` | `/api/v1/admin/requests/:id/approve` | `ADMIN` | Transition request to `ACTIVE`               |
-| `PATCH` | `/api/v1/admin/requests/:id/reject`  | `ADMIN` | Transition request to `REJECTED` with reason |
+| Status | Method  | Path                                 | Auth    | Description                                  |
+| :----- | :------ | :----------------------------------- | :------ | :------------------------------------------- |
+| ❌     | `GET`   | `/api/v1/admin/requests/pending`     | `ADMIN` | List all requests awaiting verification      |
+| ❌     | `PATCH` | `/api/v1/admin/requests/:id/approve` | `ADMIN` | Transition request to `ACTIVE`               |
+| ❌     | `PATCH` | `/api/v1/admin/requests/:id/reject`  | `ADMIN` | Transition request to `REJECTED` with reason |
 
 ---
 

@@ -194,3 +194,88 @@ registry.registerPath({
     },
   },
 });
+
+export const ResendOtpInputSchema = registry.register(
+  'ResendOtpInput',
+  z.object({
+    email: z
+      .string({ required_error: 'Email is required' })
+      .trim()
+      .email('Invalid email address format')
+      .toLowerCase()
+      .openapi({
+        example: 'abrar@example.com',
+        description: 'Email address of the staged registration',
+      }),
+  }),
+);
+
+export type ResendOtpInput = z.infer<typeof ResendOtpInputSchema>;
+
+export const ResendOtpResponseSchema = registry.register(
+  'ResendOtpResponse',
+  z.object({
+    success: z.literal(true).openapi({ example: true }),
+    statusCode: z.literal(200).openapi({ example: 200 }),
+    message: z.string().openapi({
+      example: 'A new verification code has been sent to your email.',
+    }),
+    data: z.object({
+      email: z.string().openapi({ example: 'abrar@example.com' }),
+      cooldownSeconds: z.number().openapi({ example: 60 }),
+      expiresInSeconds: z.number().openapi({ example: 900 }),
+    }),
+  }),
+);
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/auth/resend-otp',
+  tags: ['Auth'],
+  summary: 'Resend registration OTP code',
+  description:
+    'Validates that the account is not already registered, enforces a 60-second resend cooldown via Redis, generates a new 6-digit OTP, updates the Redis staging session (resetting failed attempts and extending expiration to 15 minutes), and dispatches the new code via email.',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: ResendOtpInputSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: 'New verification OTP dispatched successfully',
+      content: {
+        'application/json': {
+          schema: ResendOtpResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: 'Verification session expired or invalid',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    409: {
+      description: 'Account already registered and verified',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    429: {
+      description: 'Resend cooldown active or too many requests',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
