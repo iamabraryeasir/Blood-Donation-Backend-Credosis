@@ -279,3 +279,115 @@ registry.registerPath({
     },
   },
 });
+
+export const LoginInputSchema = registry.register(
+  'LoginInput',
+  z.object({
+    email: z
+      .string({ required_error: 'Email is required' })
+      .trim()
+      .email('Invalid email address format')
+      .toLowerCase()
+      .openapi({
+        example: 'abrar@example.com',
+        description: 'Registered user email address',
+      }),
+    password: z
+      .string({ required_error: 'Password is required' })
+      .min(1, 'Password cannot be empty')
+      .openapi({
+        example: 'SecurePass123!',
+        description: 'Account password',
+      }),
+  }),
+);
+
+export type LoginInput = z.infer<typeof LoginInputSchema>;
+
+export const LoginResponseSchema = registry.register(
+  'LoginResponse',
+  z.object({
+    success: z.literal(true).openapi({ example: true }),
+    statusCode: z.literal(200).openapi({ example: 200 }),
+    message: z.string().openapi({ example: 'Login successful' }),
+    data: z.object({
+      user: z.object({
+        id: z.string().uuid().openapi({ example: 'e4b2d354-9a57-4f51-b8d2-5a9e3240e111' }),
+        name: z.string().openapi({ example: 'Abrar Yeasir' }),
+        email: z.string().openapi({ example: 'abrar@example.com' }),
+        role: z.enum(['USER', 'ADMIN']).openapi({ example: 'USER' }),
+        isVerified: z.boolean().openapi({ example: true }),
+        isProfileComplete: z.boolean().openapi({ example: false }),
+        createdAt: z.string().datetime().openapi({ example: '2026-11-05T02:00:00.000Z' }),
+        profile: z
+          .object({
+            id: z.string().uuid(),
+            bloodGroup: z.string(),
+            phone: z.string(),
+            district: z.string(),
+            area: z.string(),
+            lastDonationDate: z.string().nullable(),
+            isAvailableForDonation: z.boolean(),
+          })
+          .nullable()
+          .openapi({ example: null }),
+      }),
+      tokens: z.object({
+        accessToken: z.string().openapi({ example: 'eyJhbGciOiJIUzI1Ni...' }),
+        refreshToken: z.string().openapi({ example: 'eyJhbGciOiJIUzI1Ni...' }),
+      }),
+    }),
+  }),
+);
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/auth/login',
+  tags: ['Auth'],
+  summary: 'Authenticate existing user and issue JWT tokens',
+  description:
+    'Authenticates user credentials against PostgreSQL, verifies that the email account has been verified, generates JWT Access and Refresh tokens, sets the HTTP-only refresh token cookie, and returns the authenticated user data.',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: LoginInputSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: 'Login successful',
+      content: {
+        'application/json': {
+          schema: LoginResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: 'Invalid input payload or validation error',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    401: {
+      description: 'Invalid email or password',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    403: {
+      description: 'Account not verified or registration pending OTP verification',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});

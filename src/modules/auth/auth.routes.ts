@@ -1,7 +1,17 @@
 import { Router } from 'express';
 import { authRateLimiter, validateRequest } from '../../middlewares';
-import { registerHandler, resendOtpHandler, verifyOtpHandler } from './auth.controller';
-import { RegisterInputSchema, ResendOtpInputSchema, VerifyOtpInputSchema } from './auth.schema';
+import {
+  loginHandler,
+  registerHandler,
+  resendOtpHandler,
+  verifyOtpHandler,
+} from './auth.controller';
+import {
+  LoginInputSchema,
+  RegisterInputSchema,
+  ResendOtpInputSchema,
+  VerifyOtpInputSchema,
+} from './auth.schema';
 
 const authRouter = Router();
 
@@ -28,5 +38,8 @@ authRouter.post(
   validateRequest(ResendOtpInputSchema),
   resendOtpHandler,
 );
+
+// POST /api/v1/auth/login (Authenticate existing user, issue tokens)
+authRouter.post('/login', authRateLimiter, validateRequest(LoginInputSchema), loginHandler);
 
 export { authRouter };

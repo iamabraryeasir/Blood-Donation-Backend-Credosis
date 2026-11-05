@@ -5,7 +5,7 @@ import { AppError } from '../../errors/AppError';
 import { emailService } from '../../services/email.service';
 import { type AuthTokens, generateTokens } from '../../utils';
 import { prisma } from '../../utils/prisma';
-import type { RegisterInput, ResendOtpInput, VerifyOtpInput } from './auth.schema';
+import type { LoginInput, RegisterInput, ResendOtpInput, VerifyOtpInput } from './auth.schema';
 
 export interface StagedOnboardingUser {
   name: string;
@@ -28,6 +28,28 @@ export interface VerifiedUser {
 
 export interface VerifyOtpResult {
   user: VerifiedUser;
+  tokens: AuthTokens;
+}
+
+export interface LoginResult {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: 'USER' | 'ADMIN';
+    isVerified: boolean;
+    isProfileComplete: boolean;
+    createdAt: Date;
+    profile: {
+      id: string;
+      bloodGroup: string;
+      phone: string;
+      district: string;
+      area: string;
+      lastDonationDate: Date | null;
+      isAvailableForDonation: boolean;
+    } | null;
+  };
   tokens: AuthTokens;
 }
 
@@ -301,6 +323,77 @@ export class AuthService {
       email: normalizedEmail,
       cooldownSeconds: RESEND_COOLDOWN_SECONDS,
       expiresInSeconds: ONBOARDING_TTL_SECONDS,
+    };
+  }
+
+  /**
+   * Authenticate user credentials, check verification status,
+   * generate JWT Access and Refresh tokens.
+   */
+  async login(input: LoginInput): Promise<LoginResult> {
+    const normalizedEmail = input.email.trim().toLowerCase();
+
+    // 1. Fetch user by email from PostgreSQL
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      include: {
+        profile: {
+          select: {
+            id: true,
+            bloodGroup: true,
+            phone: true,
+            district: true,
+            area: true,
+            lastDonationDate: true,
+            isAvailableForDonation: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      // Check if registration is still staged in Redis pending OTP verification
+      const stagedData = await redisClient.get(`onboarding:${normalizedEmail}`);
+      if (stagedData) {
+        throw new AppError(
+          'Account verification is pending. Please verify your email with the OTP code sent to you.',
+          403,
+        );
+      }
+
+      throw new AppError('Invalid email or password', 401);
+    }
+
+    // 2. Validate password
+    const isPasswordValid = await bcrypt.compare(input.password, user.passwordHash);
+    if (!isPasswordValid) {
+      throw new AppError('Invalid email or password', 401);
+    }
+
+    // 3. Ensure account is verified
+    if (!user.isVerified) {
+      throw new AppError('Your account is not verified. Please verify your email.', 403);
+    }
+
+    // 4. Generate JWT tokens
+    const tokens = generateTokens({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
+    return {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isVerified: user.isVerified,
+        isProfileComplete: user.isProfileComplete,
+        createdAt: user.createdAt,
+        profile: user.profile,
+      },
+      tokens,
     };
   }
 }

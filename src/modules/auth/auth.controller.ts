@@ -42,3 +42,22 @@ export const resendOtpHandler = catchAsync(async (req, res) => {
     data: result,
   });
 });
+
+export const loginHandler = catchAsync(async (req, res) => {
+  const result = await authService.login(req.body);
+
+  // Set HTTP-only refresh token cookie
+  res.cookie('refreshToken', result.tokens.refreshToken, {
+    httpOnly: true,
+    secure: env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  });
+
+  res.status(200).json({
+    success: true,
+    statusCode: 200,
+    message: 'Login successful',
+    data: result,
+  });
+});
