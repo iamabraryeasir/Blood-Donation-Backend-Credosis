@@ -293,12 +293,15 @@ model DonationResponse {
 
 ### Blood Requests (`/api/v1/requests`)
 
-| Status | Method  | Path                           | Auth                      | Description                                    |
-| :----- | :------ | :----------------------------- | :------------------------ | :--------------------------------------------- |
-| ✅     | `POST`  | `/api/v1/requests`             | `USER` (Profile Complete) | Create new request (enters `PENDING_APPROVAL`) |
-| ✅     | `GET`   | `/api/v1/requests`             | Public / `USER`           | Filter & paginate `ACTIVE` requests            |
-| ✅     | `GET`   | `/api/v1/requests/:id`         | Public / `USER`           | Retrieve request details                       |
-| ❌     | `PATCH` | `/api/v1/requests/:id/fulfill` | Requester / `ADMIN`       | Mark request as `FULFILLED`                    |
+| Status | Method  | Path                           | Auth                      | Description                                                  |
+| :----- | :------ | :----------------------------- | :------------------------ | :----------------------------------------------------------- |
+| ✅     | `POST`  | `/api/v1/requests`             | `USER` (Profile Complete) | Create new request (enters `PENDING_APPROVAL`)               |
+| ✅     | `GET`   | `/api/v1/requests`             | Public / `USER`           | Filter & paginate `ACTIVE` requests                          |
+| ❌     | `GET`   | `/api/v1/requests/pending`     | `ADMIN`                   | List all requests awaiting verification (`PENDING_APPROVAL`) |
+| ✅     | `GET`   | `/api/v1/requests/:id`         | Public / `USER`           | Retrieve request details                                     |
+| ❌     | `PATCH` | `/api/v1/requests/:id/approve` | `ADMIN`                   | Transition request from `PENDING_APPROVAL` to `ACTIVE`       |
+| ❌     | `PATCH` | `/api/v1/requests/:id/reject`  | `ADMIN`                   | Transition request from `PENDING_APPROVAL` to `REJECTED`     |
+| ❌     | `PATCH` | `/api/v1/requests/:id/fulfill` | Requester / `ADMIN`       | Transition request from `ACTIVE` to `FULFILLED`              |
 
 ### Donor Response Management (`/api/v1/requests/:id/responses`)
 
@@ -306,14 +309,6 @@ model DonationResponse {
 | :----- | :----- | :------------------------------- | :------------------------ | :------------------------------------------------------- |
 | ❌     | `POST` | `/api/v1/requests/:id/responses` | `USER` (Profile Complete) | Respond to active request (Strict match + 90d check)     |
 | ❌     | `GET`  | `/api/v1/requests/:id/responses` | Requester / `ADMIN`       | List all responding donors with verified contact details |
-
-### Administrative Oversight (`/api/v1/admin`)
-
-| Status | Method  | Path                                 | Auth    | Description                                  |
-| :----- | :------ | :----------------------------------- | :------ | :------------------------------------------- |
-| ❌     | `GET`   | `/api/v1/admin/requests/pending`     | `ADMIN` | List all requests awaiting verification      |
-| ❌     | `PATCH` | `/api/v1/admin/requests/:id/approve` | `ADMIN` | Transition request to `ACTIVE`               |
-| ❌     | `PATCH` | `/api/v1/admin/requests/:id/reject`  | `ADMIN` | Transition request to `REJECTED` with reason |
 
 ---
 
