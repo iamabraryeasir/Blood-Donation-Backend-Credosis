@@ -16,7 +16,7 @@ const startServer = async (): Promise<void> => {
         // Seed default admin account
         await seedAdmin();
 
-        server = app.listen(env.PORT, () => {
+        server = app.listen(env.PORT, '0.0.0.0', () => {
             console.log('=======================================================');
             console.log('  Blood Donation Platform API Server Running');
             console.log(`  Environment : ${env.NODE_ENV}`);

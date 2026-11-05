@@ -1,6 +1,14 @@
+import type { CookieOptions } from 'express';
 import { env } from '../../config/env';
 import { catchAsync } from '../../utils';
 import { authService } from './auth.service';
+
+const getRefreshTokenCookieOptions = (): CookieOptions => ({
+    httpOnly: true,
+    secure: env.NODE_ENV === 'production',
+    sameSite: env.NODE_ENV === 'production' ? 'none' : 'strict',
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+});
 
 export const registerHandler = catchAsync(async (req, res) => {
     const result = await authService.register(req.body);
@@ -17,12 +25,7 @@ export const verifyOtpHandler = catchAsync(async (req, res) => {
     const result = await authService.verifyOtp(req.body);
 
     // Set HTTP-only refresh token cookie
-    res.cookie('refreshToken', result.tokens.refreshToken, {
-        httpOnly: true,
-        secure: env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    res.cookie('refreshToken', result.tokens.refreshToken, getRefreshTokenCookieOptions());
 
     res.status(201).json({
         success: true,
@@ -47,12 +50,7 @@ export const loginHandler = catchAsync(async (req, res) => {
     const result = await authService.login(req.body);
 
     // Set HTTP-only refresh token cookie
-    res.cookie('refreshToken', result.tokens.refreshToken, {
-        httpOnly: true,
-        secure: env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    res.cookie('refreshToken', result.tokens.refreshToken, getRefreshTokenCookieOptions());
 
     res.status(200).json({
         success: true,
@@ -68,12 +66,7 @@ export const refreshTokenHandler = catchAsync(async (req, res) => {
     const result = await authService.refreshToken(token);
 
     // Set rotated HTTP-only refresh token cookie
-    res.cookie('refreshToken', result.tokens.refreshToken, {
-        httpOnly: true,
-        secure: env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    res.cookie('refreshToken', result.tokens.refreshToken, getRefreshTokenCookieOptions());
 
     res.status(200).json({
         success: true,

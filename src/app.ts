@@ -15,6 +15,9 @@ import { rootRouter } from './routes';
 
 const app: Application = express();
 
+// Trust reverse proxy (e.g. Render, Cloudflare, AWS ALB) for accurate client IP in rate limiting & secure cookies
+app.set('trust proxy', 1);
+
 // Disable x-powered-by header
 app.disable('x-powered-by');
 
@@ -26,10 +29,11 @@ app.use(
 );
 
 // Cross-Origin Resource Sharing (CORS)
+const allowedOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim());
 app.use(
     cors({
         origin: (origin, callback) => {
-            if (!origin || env.CORS_ORIGIN === '*' || env.CORS_ORIGIN.split(',').includes(origin)) {
+            if (!origin || env.CORS_ORIGIN === '*' || allowedOrigins.includes(origin)) {
                 callback(null, true);
             } else {
                 callback(new Error('Not allowed by CORS'));

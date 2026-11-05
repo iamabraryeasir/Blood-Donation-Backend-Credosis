@@ -6,7 +6,8 @@
     "type": "module",
     "scripts": {
         "dev": "tsx watch src/server.ts",
-        "build": "tsup",
+        "build": "prisma generate && tsup",
+        "postinstall": "prisma generate",
         "start": "node dist/server.js",
         "typecheck": "tsc --noEmit",
         "check": "biome check .",
@@ -14,6 +15,9 @@
         "prisma:generate": "prisma generate",
         "prisma:migrate": "prisma migrate dev",
         "prisma:studio": "prisma studio"
+    },
+    "engines": {
+        "node": ">=20.0.0"
     },
     "keywords": ["blood-donation", "express", "typescript", "api"],
     "author": "",

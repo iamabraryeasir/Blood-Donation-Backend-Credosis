@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import ejs from 'ejs';
 import nodemailer, { type Transporter } from 'nodemailer';
@@ -27,7 +28,9 @@ class EmailService {
     private readonly templatesDir: string;
 
     constructor() {
-        this.templatesDir = path.resolve(process.cwd(), 'src/templates/emails');
+        const primary = path.resolve(process.cwd(), 'src/templates/emails');
+        const fallback = path.resolve(process.cwd(), 'dist/templates/emails');
+        this.templatesDir = fs.existsSync(primary) ? primary : fallback;
     }
 
     /**
