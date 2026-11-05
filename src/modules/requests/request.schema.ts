@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { registry } from '../../docs/registry';
-import { ErrorResponseSchema } from '../../docs/schemas/common.schema';
+import { ErrorResponseSchema, PaginationMetaSchema } from '../../docs/schemas/common.schema';
 import { BloodGroupEnum } from '../users/user.schema';
 
 export const UrgencyLevelEnum = z.enum(['NORMAL', 'URGENT', 'EMERGENCY']);
@@ -157,6 +157,133 @@ registry.registerPath({
     },
     403: {
       description: 'Forbidden (profile incomplete or unverified account)',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});
+
+export const GetBloodRequestsQuerySchema = registry.register(
+  'GetBloodRequestsQuery',
+  z.object({
+    page: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .default(1)
+      .openapi({ example: 1, description: 'Page number' }),
+    limit: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(100)
+      .default(10)
+      .openapi({ example: 10, description: 'Items per page (max 100)' }),
+    sortBy: z
+      .enum(['createdAt', 'neededAt', 'urgency', 'unitsNeeded'])
+      .default('createdAt')
+      .openapi({ example: 'createdAt', description: 'Field to sort by' }),
+    sortOrder: z
+      .enum(['asc', 'desc'])
+      .default('desc')
+      .openapi({ example: 'desc', description: 'Sort direction' }),
+    bloodGroup: BloodGroupEnum.optional().openapi({
+      example: 'O_POS',
+      description: 'Filter by required blood group',
+    }),
+    urgency: UrgencyLevelEnum.optional().openapi({
+      example: 'URGENT',
+      description: 'Filter by urgency level',
+    }),
+    district: z
+      .string()
+      .trim()
+      .optional()
+      .openapi({ example: 'Dhaka', description: 'Case-insensitive filter by district' }),
+    area: z
+      .string()
+      .trim()
+      .optional()
+      .openapi({ example: 'Bakshibazar', description: 'Case-insensitive filter by area' }),
+    search: z.string().trim().optional().openapi({
+      example: 'Medical',
+      description: 'Free-text search across hospital, patient, district, and area',
+    }),
+  }),
+);
+
+export type GetBloodRequestsQuery = z.infer<typeof GetBloodRequestsQuerySchema>;
+
+export const ActiveBloodRequestItemSchema = registry.register(
+  'ActiveBloodRequestItem',
+  z.object({
+    id: z.string().uuid().openapi({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }),
+    patientName: z.string().openapi({ example: 'Rahim Uddin' }),
+    bloodGroup: BloodGroupEnum.openapi({ example: 'O_POS' }),
+    unitsNeeded: z.number().openapi({ example: 1 }),
+    hospitalName: z.string().openapi({ example: 'Dhaka Medical College Hospital' }),
+    district: z.string().openapi({ example: 'Dhaka' }),
+    area: z.string().openapi({ example: 'Bakshibazar' }),
+    urgency: UrgencyLevelEnum.openapi({ example: 'URGENT' }),
+    neededAt: z.string().datetime().openapi({ example: '2026-11-06T14:00:00.000Z' }),
+    additionalNotes: z
+      .string()
+      .nullable()
+      .openapi({ example: 'Emergency surgery scheduled for tomorrow morning.' }),
+    status: RequestStatusEnum.openapi({ example: 'ACTIVE' }),
+    createdAt: z.string().datetime().openapi({ example: '2026-11-05T23:00:00.000Z' }),
+    requester: z.object({
+      id: z.string().uuid().openapi({ example: 'e4b2d354-9a57-4f51-b8d2-5a9e3240e111' }),
+      name: z.string().openapi({ example: 'Abrar Yeasir' }),
+    }),
+    _count: z.object({
+      responses: z.number().openapi({
+        example: 2,
+        description: 'Number of donors who responded to this request',
+      }),
+    }),
+  }),
+);
+
+export const GetBloodRequestsResponseSchema = registry.register(
+  'GetBloodRequestsResponse',
+  z.object({
+    success: z.literal(true).openapi({ example: true }),
+    statusCode: z.literal(200).openapi({ example: 200 }),
+    message: z
+      .string()
+      .openapi({ example: 'Active blood donation requests retrieved successfully' }),
+    data: z.object({
+      requests: z.array(ActiveBloodRequestItemSchema),
+      pagination: PaginationMetaSchema,
+    }),
+  }),
+);
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/requests',
+  tags: ['Requests'],
+  summary: 'List active blood donation requests (Public Feed)',
+  description:
+    'Retrieves a paginated list of ACTIVE blood donation requests with optional filters for blood group, urgency, district, area, and free-text search. Requester contact numbers are omitted to preserve privacy until donor responds.',
+  request: {
+    query: GetBloodRequestsQuerySchema,
+  },
+  responses: {
+    200: {
+      description: 'Active blood donation requests retrieved successfully',
+      content: {
+        'application/json': {
+          schema: GetBloodRequestsResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: 'Validation error (invalid query parameter)',
       content: {
         'application/json': {
           schema: ErrorResponseSchema,

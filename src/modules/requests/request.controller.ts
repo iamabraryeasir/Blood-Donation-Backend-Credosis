@@ -1,6 +1,20 @@
 import { AppError } from '../../errors';
 import { catchAsync } from '../../utils';
+import type { GetBloodRequestsQuery } from './request.schema';
 import { requestService } from './request.service';
+
+export const getActiveRequestsHandler = catchAsync(async (req, res) => {
+  const result = await requestService.getActiveRequests(
+    req.query as unknown as GetBloodRequestsQuery,
+  );
+
+  res.status(200).json({
+    success: true,
+    statusCode: 200,
+    message: 'Active blood donation requests retrieved successfully',
+    data: result,
+  });
+});
 
 export const createRequestHandler = catchAsync(async (req, res) => {
   if (!req.user) {

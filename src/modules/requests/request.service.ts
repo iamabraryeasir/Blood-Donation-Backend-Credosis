@@ -1,10 +1,76 @@
+import type { Prisma } from '@prisma/client';
 import { AppError } from '../../errors';
 import { prisma } from '../../utils/prisma';
-import type { CreateBloodRequestInput } from './request.schema';
+import { buildPrismaQuery, calculatePaginationMeta } from '../../utils/queryBuilder';
+import type { CreateBloodRequestInput, GetBloodRequestsQuery } from './request.schema';
 
 export class RequestService {
   /**
+   * Retrieve paginated ACTIVE blood donation requests with optional filters and free-text search.
+   * Upholds privacy by omitting requester contact numbers from the public feed.
+   */
+  async getActiveRequests(query: GetBloodRequestsQuery) {
+    const prismaQuery = buildPrismaQuery<Prisma.BloodRequestWhereInput>(query, {
+      baseWhere: { status: 'ACTIVE' },
+      searchableFields: ['hospitalName', 'patientName', 'district', 'area'],
+      exactFilterFields: ['bloodGroup', 'urgency'],
+      caseInsensitiveFilterFields: ['district', 'area'],
+      defaultSortBy: 'createdAt',
+      defaultSortOrder: 'desc',
+    });
+
+    const [requests, totalCount] = await Promise.all([
+      prisma.bloodRequest.findMany({
+        where: prismaQuery.where,
+        skip: prismaQuery.skip,
+        take: prismaQuery.take,
+        orderBy: prismaQuery.orderBy,
+        select: {
+          id: true,
+          patientName: true,
+          bloodGroup: true,
+          unitsNeeded: true,
+          hospitalName: true,
+          district: true,
+          area: true,
+          urgency: true,
+          neededAt: true,
+          additionalNotes: true,
+          status: true,
+          createdAt: true,
+          requester: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          _count: {
+            select: {
+              responses: true,
+            },
+          },
+        },
+      }),
+      prisma.bloodRequest.count({
+        where: prismaQuery.where,
+      }),
+    ]);
+
+    const pagination = calculatePaginationMeta(
+      totalCount,
+      prismaQuery.pagination.page,
+      prismaQuery.pagination.limit,
+    );
+
+    return {
+      requests,
+      pagination,
+    };
+  }
+
+  /**
    * Create a new blood donation request.
+
    * Enforces user existence, verification, and profile completeness.
    * Initializes status strictly as PENDING_APPROVAL.
    */
