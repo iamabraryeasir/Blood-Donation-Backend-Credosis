@@ -45,6 +45,35 @@ export const checkAuth = (...allowedRoles: Role[]) => {
 };
 
 /**
+ * Optional Authentication Middleware.
+ * Populates req.user if a valid Bearer JWT Access Token is present in the Authorization header.
+ * If the header is missing, malformed, or the token is invalid, it simply proceeds without req.user.
+ */
+export const optionalAuth = (req: Request, _res: Response, next: NextFunction): void => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    next();
+    return;
+  }
+
+  const token = authHeader.split(' ')[1];
+  if (!token) {
+    next();
+    return;
+  }
+
+  try {
+    const payload = verifyAccessToken(token);
+    req.user = payload;
+  } catch {
+    // Gracefully ignore token errors for optional authentication
+  }
+
+  next();
+};
+
+/**
  * Middleware to enforce that the authenticated user has completed Step 2 Profile setup.
  */
 export const requireProfileComplete = async (

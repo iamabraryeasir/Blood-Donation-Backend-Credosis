@@ -297,7 +297,7 @@ model DonationResponse {
 | :----- | :------ | :----------------------------- | :------------------------ | :--------------------------------------------- |
 | ✅     | `POST`  | `/api/v1/requests`             | `USER` (Profile Complete) | Create new request (enters `PENDING_APPROVAL`) |
 | ✅     | `GET`   | `/api/v1/requests`             | Public / `USER`           | Filter & paginate `ACTIVE` requests            |
-| ❌     | `GET`   | `/api/v1/requests/:id`         | Public / `USER`           | Retrieve request details                       |
+| ✅     | `GET`   | `/api/v1/requests/:id`         | Public / `USER`           | Retrieve request details                       |
 | ❌     | `PATCH` | `/api/v1/requests/:id/fulfill` | Requester / `ADMIN`       | Mark request as `FULFILLED`                    |
 
 ### Donor Response Management (`/api/v1/requests/:id/responses`)

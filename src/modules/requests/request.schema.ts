@@ -292,3 +292,117 @@ registry.registerPath({
     },
   },
 });
+
+export const BloodRequestIdParamSchema = registry.register(
+  'BloodRequestIdParam',
+  z.object({
+    id: z.string().uuid({ message: 'Request ID must be a valid UUID' }).openapi({
+      example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+      description: 'Unique UUID identifier of the blood request',
+    }),
+  }),
+);
+
+export type BloodRequestIdParam = z.infer<typeof BloodRequestIdParamSchema>;
+
+export const BloodRequestDetailsItemSchema = registry.register(
+  'BloodRequestDetailsItem',
+  z.object({
+    id: z.string().uuid().openapi({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' }),
+    patientName: z.string().openapi({ example: 'Rahim Uddin' }),
+    bloodGroup: BloodGroupEnum.openapi({ example: 'O_POS' }),
+    unitsNeeded: z.number().openapi({ example: 1 }),
+    hospitalName: z.string().openapi({ example: 'Dhaka Medical College Hospital' }),
+    district: z.string().openapi({ example: 'Dhaka' }),
+    area: z.string().openapi({ example: 'Bakshibazar' }),
+    urgency: UrgencyLevelEnum.openapi({ example: 'URGENT' }),
+    neededAt: z.string().datetime().openapi({ example: '2026-11-06T14:00:00.000Z' }),
+    contactNumber: z.string().nullable().openapi({
+      example: '01712345678',
+      description:
+        'Requester contact number. Strictly null for unauthenticated visitors and non-participating users to preserve donor/requester privacy.',
+    }),
+    additionalNotes: z
+      .string()
+      .nullable()
+      .openapi({ example: 'Emergency surgery scheduled for tomorrow morning.' }),
+    status: RequestStatusEnum.openapi({ example: 'ACTIVE' }),
+    rejectionReason: z.string().nullable().openapi({
+      example: null,
+      description:
+        'Administrative rejection reason, visible only to the requester or administrators if rejected',
+    }),
+    createdAt: z.string().datetime().openapi({ example: '2026-11-05T23:00:00.000Z' }),
+    updatedAt: z.string().datetime().openapi({ example: '2026-11-05T23:00:00.000Z' }),
+    requester: z.object({
+      id: z.string().uuid().openapi({ example: 'e4b2d354-9a57-4f51-b8d2-5a9e3240e111' }),
+      name: z.string().openapi({ example: 'Abrar Yeasir' }),
+    }),
+    _count: z.object({
+      responses: z.number().openapi({
+        example: 2,
+        description: 'Number of donors who responded to this request',
+      }),
+    }),
+    isRequester: z.boolean().openapi({
+      example: false,
+      description: 'True if the currently authenticated user created this request',
+    }),
+    hasUserResponded: z.boolean().openapi({
+      example: false,
+      description: 'True if the currently authenticated user has submitted a response to donate',
+    }),
+  }),
+);
+
+export const GetBloodRequestDetailsResponseSchema = registry.register(
+  'GetBloodRequestDetailsResponse',
+  z.object({
+    success: z.literal(true).openapi({ example: true }),
+    statusCode: z.literal(200).openapi({ example: 200 }),
+    message: z
+      .string()
+      .openapi({ example: 'Blood donation request details retrieved successfully' }),
+    data: z.object({
+      request: BloodRequestDetailsItemSchema,
+    }),
+  }),
+);
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/requests/{id}',
+  tags: ['Requests'],
+  summary: 'Retrieve blood donation request details',
+  description:
+    'Retrieves detailed information for a specific blood donation request. Contact number is disclosed strictly to the requester, administrators, and responding donors. Non-active requests (PENDING_APPROVAL, REJECTED) are viewable only by their owner or an admin.',
+  request: {
+    params: BloodRequestIdParamSchema,
+  },
+  responses: {
+    200: {
+      description: 'Blood donation request details retrieved successfully',
+      content: {
+        'application/json': {
+          schema: GetBloodRequestDetailsResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: 'Invalid UUID path parameter',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: 'Blood donation request not found',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});

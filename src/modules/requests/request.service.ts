@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { AppError } from '../../errors';
+import type { JwtUserPayload } from '../../utils/jwt';
 import { prisma } from '../../utils/prisma';
 import { buildPrismaQuery, calculatePaginationMeta } from '../../utils/queryBuilder';
 import type { CreateBloodRequestInput, GetBloodRequestsQuery } from './request.schema';
@@ -65,6 +66,72 @@ export class RequestService {
     return {
       requests,
       pagination,
+    };
+  }
+
+  /**
+   * Retrieve single blood donation request details by ID.
+   * Upholds privacy rules: contactNumber is visible strictly to requester, admin, or responded donors.
+   * Non-active requests (PENDING_APPROVAL, REJECTED) are viewable strictly by requester or admin.
+   */
+  async getRequestById(requestId: string, currentUser?: JwtUserPayload) {
+    const request = await prisma.bloodRequest.findUnique({
+      where: { id: requestId },
+      include: {
+        requester: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        _count: {
+          select: {
+            responses: true,
+          },
+        },
+        responses: currentUser
+          ? {
+              where: { donorId: currentUser.userId },
+              select: { id: true, status: true },
+            }
+          : false,
+      },
+    });
+
+    if (!request) {
+      throw new AppError('Blood donation request not found', 404);
+    }
+
+    const isOwner = currentUser?.userId === request.requesterId;
+    const isAdmin = currentUser?.role === 'ADMIN';
+    const hasResponded = Boolean(request.responses && request.responses.length > 0);
+
+    // Visibility rule: non-active requests can only be viewed by owner or admin
+    if (request.status !== 'ACTIVE' && !isOwner && !isAdmin) {
+      throw new AppError('Blood donation request not found', 404);
+    }
+
+    return {
+      id: request.id,
+      patientName: request.patientName,
+      bloodGroup: request.bloodGroup,
+      unitsNeeded: request.unitsNeeded,
+      hospitalName: request.hospitalName,
+      district: request.district,
+      area: request.area,
+      urgency: request.urgency,
+      neededAt: request.neededAt,
+      contactNumber: isOwner || isAdmin || hasResponded ? request.contactNumber : null,
+      additionalNotes: request.additionalNotes,
+      status: request.status,
+      rejectionReason:
+        (isOwner || isAdmin) && request.status === 'REJECTED' ? request.rejectionReason : null,
+      createdAt: request.createdAt,
+      updatedAt: request.updatedAt,
+      requester: request.requester,
+      _count: request._count,
+      isRequester: isOwner,
+      hasUserResponded: hasResponded,
     };
   }
 
