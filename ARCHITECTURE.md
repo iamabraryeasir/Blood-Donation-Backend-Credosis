@@ -275,12 +275,13 @@ model DonationResponse {
 
 ### Authentication & Onboarding (`/api/v1/auth`)
 
-| Status | Method | Path                      | Auth                  | Description                                     |
-| :----- | :----- | :------------------------ | :-------------------- | :---------------------------------------------- |
-| ✅     | `POST` | `/api/v1/auth/register`   | Public                | Stage registration in Redis, dispatch email OTP |
-| ✅     | `POST` | `/api/v1/auth/verify-otp` | Public                | Verify OTP, commit User to DB, issue JWT tokens |
-| ✅     | `POST` | `/api/v1/auth/resend-otp` | Public (Rate-limited) | 60-second cooldown check, dispatch new OTP      |
-| ✅     | `POST` | `/api/v1/auth/login`      | Public                | Authenticate existing user, issue JWT tokens    |
+| Status | Method | Path                         | Auth                   | Description                                             |
+| :----- | :----- | :--------------------------- | :--------------------- | :------------------------------------------------------ |
+| ✅     | `POST` | `/api/v1/auth/register`      | Public                 | Stage registration in Redis, dispatch email OTP         |
+| ✅     | `POST` | `/api/v1/auth/verify-otp`    | Public                 | Verify OTP, commit User to DB, issue JWT tokens         |
+| ✅     | `POST` | `/api/v1/auth/resend-otp`    | Public (Rate-limited)  | 60-second cooldown check, dispatch new OTP              |
+| ✅     | `POST` | `/api/v1/auth/login`         | Public                 | Authenticate existing user, issue JWT tokens            |
+| ✅     | `POST` | `/api/v1/auth/refresh-token` | Public (Cookie / Body) | Verify refresh token, rotate session, issue new tokens  |
 
 ### User Profile (`/api/v1/users`)
 

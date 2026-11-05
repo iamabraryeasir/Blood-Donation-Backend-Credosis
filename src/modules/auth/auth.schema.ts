@@ -391,3 +391,83 @@ registry.registerPath({
     },
   },
 });
+
+export const RefreshTokenInputSchema = registry.register(
+  'RefreshTokenInput',
+  z.object({
+    refreshToken: z.string().optional().openapi({
+      description:
+        'Optional in request body if provided via HTTP-only cookie; required for non-browser/mobile clients',
+      example: 'eyJhbGciOiJIUzI1Ni...',
+    }),
+  }),
+);
+
+export type RefreshTokenInput = z.infer<typeof RefreshTokenInputSchema>;
+
+export const RefreshTokenResponseSchema = registry.register(
+  'RefreshTokenResponse',
+  z.object({
+    success: z.literal(true).openapi({ example: true }),
+    statusCode: z.literal(200).openapi({ example: 200 }),
+    message: z.string().openapi({ example: 'Tokens refreshed successfully' }),
+    data: z.object({
+      tokens: z.object({
+        accessToken: z.string().openapi({ example: 'eyJhbGciOiJIUzI1Ni...' }),
+        refreshToken: z.string().openapi({ example: 'eyJhbGciOiJIUzI1Ni...' }),
+      }),
+    }),
+  }),
+);
+
+registry.registerPath({
+  method: 'post',
+  path: '/api/v1/auth/refresh-token',
+  tags: ['Auth'],
+  summary: 'Refresh access token and rotate session',
+  description:
+    'Accepts a refresh token via HTTP-only cookie or request body, verifies token authenticity, validates user account status in PostgreSQL, and issues a fresh Access and Refresh token pair.',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: RefreshTokenInputSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: 'Tokens refreshed successfully',
+      content: {
+        'application/json': {
+          schema: RefreshTokenResponseSchema,
+        },
+      },
+    },
+    400: {
+      description: 'Malformed input payload',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    401: {
+      description: 'Missing, invalid, or expired refresh token',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    403: {
+      description: 'User account is unverified',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});

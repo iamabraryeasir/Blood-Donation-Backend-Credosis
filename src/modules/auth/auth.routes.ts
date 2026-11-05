@@ -2,12 +2,14 @@ import { Router } from 'express';
 import { authRateLimiter, validateRequest } from '../../middlewares';
 import {
   loginHandler,
+  refreshTokenHandler,
   registerHandler,
   resendOtpHandler,
   verifyOtpHandler,
 } from './auth.controller';
 import {
   LoginInputSchema,
+  RefreshTokenInputSchema,
   RegisterInputSchema,
   ResendOtpInputSchema,
   VerifyOtpInputSchema,
@@ -41,5 +43,13 @@ authRouter.post(
 
 // POST /api/v1/auth/login (Authenticate existing user, issue tokens)
 authRouter.post('/login', authRateLimiter, validateRequest(LoginInputSchema), loginHandler);
+
+// POST /api/v1/auth/refresh-token (Exchange refresh token for rotated tokens)
+authRouter.post(
+  '/refresh-token',
+  authRateLimiter,
+  validateRequest(RefreshTokenInputSchema),
+  refreshTokenHandler,
+);
 
 export { authRouter };

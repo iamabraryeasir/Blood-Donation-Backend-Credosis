@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { redisClient } from '../../config/redis';
 import { AppError } from '../../errors/AppError';
 import { emailService } from '../../services/email.service';
-import { type AuthTokens, generateTokens } from '../../utils';
+import { type AuthTokens, generateTokens, verifyRefreshToken } from '../../utils';
 import { prisma } from '../../utils/prisma';
 import type { LoginInput, RegisterInput, ResendOtpInput, VerifyOtpInput } from './auth.schema';
 
@@ -395,6 +395,52 @@ export class AuthService {
       },
       tokens,
     };
+  }
+
+  /**
+   * Validate refresh token, verify user exists in PostgreSQL and is verified,
+   * rotate session by issuing fresh Access and Refresh tokens.
+   */
+  async refreshToken(token: string): Promise<{ tokens: AuthTokens }> {
+    if (!token || typeof token !== 'string') {
+      throw new AppError('Refresh token is required', 401);
+    }
+
+    // 1. Verify token signature and expiration
+    let decoded: { userId: string; email: string; role: 'USER' | 'ADMIN' };
+    try {
+      decoded = verifyRefreshToken(token);
+    } catch {
+      throw new AppError('Invalid or expired refresh token', 401);
+    }
+
+    // 2. Verify user in PostgreSQL
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        isVerified: true,
+      },
+    });
+
+    if (!user) {
+      throw new AppError('User account not found', 401);
+    }
+
+    if (!user.isVerified) {
+      throw new AppError('User account is unverified', 403);
+    }
+
+    // 3. Issue rotated tokens
+    const tokens = generateTokens({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
+    return { tokens };
   }
 }
 
