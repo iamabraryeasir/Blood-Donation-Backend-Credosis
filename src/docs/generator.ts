@@ -12,6 +12,29 @@ export type OpenApiDocument = ReturnType<OpenApiGeneratorV3['generateDocument']>
 export const generateOpenApiSpec = (): OpenApiDocument => {
     const generator = new OpenApiGeneratorV3(registry.definitions);
 
+    const servers: { url: string; description: string }[] = [];
+    const externalUrl = process.env.RENDER_EXTERNAL_URL || process.env.BASE_URL;
+
+    if (externalUrl) {
+        servers.push({
+            url: externalUrl,
+            description: `${env.NODE_ENV === 'production' ? 'Production' : env.NODE_ENV} Cloud Server`,
+        });
+    }
+
+    // Relative root URL automatically resolves to the origin serving Swagger UI
+    servers.push({
+        url: '/',
+        description: 'Current Origin (Auto-detected)',
+    });
+
+    if (env.NODE_ENV !== 'production' || !externalUrl) {
+        servers.push({
+            url: `http://localhost:${env.PORT}`,
+            description: 'Local Development Server',
+        });
+    }
+
     return generator.generateDocument({
         openapi: '3.0.0',
         info: {
@@ -26,12 +49,7 @@ export const generateOpenApiSpec = (): OpenApiDocument => {
                 name: 'ISC',
             },
         },
-        servers: [
-            {
-                url: `http://localhost:${env.PORT}`,
-                description: `${env.NODE_ENV} environment (Local)`,
-            },
-        ],
+        servers,
         tags: [
             {
                 name: 'System',
