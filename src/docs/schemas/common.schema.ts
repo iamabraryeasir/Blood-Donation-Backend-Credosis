@@ -52,3 +52,17 @@ export const ApiRootMessageSchema = registry.register(
     })
     .openapi({ description: 'API Root Information Envelope' }),
 );
+
+export const PaginationMetaSchema = registry.register(
+  'PaginationMeta',
+  z
+    .object({
+      page: z.number().openapi({ example: 1, description: 'Current page number' }),
+      limit: z.number().openapi({ example: 10, description: 'Records per page' }),
+      totalCount: z.number().openapi({ example: 25, description: 'Total matching records' }),
+      totalPages: z.number().openapi({ example: 3, description: 'Total available pages' }),
+      hasNextPage: z.boolean().openapi({ example: true }),
+      hasPrevPage: z.boolean().openapi({ example: false }),
+    })
+    .openapi({ description: 'Standardized Pagination Metadata Envelope' }),
+);
