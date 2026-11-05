@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { checkAuth, requireProfileComplete, validateRequest } from '../../middlewares';
 import { BloodRequestIdParamSchema } from '../requests/request.schema';
-import { createResponseHandler } from './response.controller';
-import { CreateDonorResponseInputSchema } from './response.schema';
+import { createResponseHandler, getResponsesHandler } from './response.controller';
+import { CreateDonorResponseInputSchema, GetDonorResponsesQuerySchema } from './response.schema';
 
 const responseRouter = Router({ mergeParams: true });
 
@@ -16,5 +16,13 @@ responseRouter.post(
     createResponseHandler,
 );
 
-export { responseRouter };
+// GET /api/v1/requests/:id/responses (List responding donors - Requester or ADMIN)
+responseRouter.get(
+    '/',
+    checkAuth('USER', 'ADMIN'),
+    validateRequest(BloodRequestIdParamSchema, 'params'),
+    validateRequest(GetDonorResponsesQuerySchema, 'query'),
+    getResponsesHandler,
+);
 
+export { responseRouter };

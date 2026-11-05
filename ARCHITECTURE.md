@@ -308,7 +308,7 @@ model DonationResponse {
 | Status | Method | Path                             | Auth                      | Description                                              |
 | :----- | :----- | :------------------------------- | :------------------------ | :------------------------------------------------------- |
 | ✅     | `POST` | `/api/v1/requests/:id/responses` | `USER` (Profile Complete) | Respond to active request (Strict match + 90d check)     |
-| ❌     | `GET`  | `/api/v1/requests/:id/responses` | Requester / `ADMIN`       | List all responding donors with verified contact details |
+| ✅     | `GET`  | `/api/v1/requests/:id/responses` | Requester / `ADMIN`       | List all responding donors with verified contact details |
 
 ---
 

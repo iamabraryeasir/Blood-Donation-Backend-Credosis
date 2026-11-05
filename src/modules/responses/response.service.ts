@@ -1,6 +1,9 @@
+import type { Prisma } from '@prisma/client';
 import { AppError } from '../../errors';
+import type { JwtUserPayload } from '../../utils/jwt';
 import { prisma } from '../../utils/prisma';
-import type { CreateDonorResponseInput } from './response.schema';
+import { buildPrismaQuery, calculatePaginationMeta } from '../../utils/queryBuilder';
+import type { CreateDonorResponseInput, GetDonorResponsesQuery } from './response.schema';
 
 const COOLDOWN_DAYS = 90;
 
@@ -152,7 +155,119 @@ export class ResponseService {
             },
         };
     }
+
+    /**
+     * Retrieve paginated responses for a blood donation request.
+     * Accessible strictly by the original requester or an ADMIN.
+     * Utilizes standardized buildPrismaQuery and calculatePaginationMeta.
+     */
+    async getResponsesByRequestId(
+        requestId: string,
+        currentUser: JwtUserPayload,
+        query: GetDonorResponsesQuery,
+    ) {
+        // 1. Fetch request to verify existence and check authorization
+        const request = await prisma.bloodRequest.findUnique({
+            where: { id: requestId },
+            select: {
+                id: true,
+                requesterId: true,
+            },
+        });
+
+        if (!request) {
+            throw new AppError('Blood donation request not found', 404);
+        }
+
+        // 2. Authorization check: ADMIN or original Requester only
+        if (currentUser.role !== 'ADMIN' && request.requesterId !== currentUser.userId) {
+            throw new AppError(
+                'You are not authorized to view donor responses for this blood request',
+                403,
+            );
+        }
+
+        // 3. Build Prisma query using standardized utility
+        const prismaQuery = buildPrismaQuery<Prisma.DonationResponseWhereInput>(query, {
+            baseWhere: { requestId },
+            exactFilterFields: ['status'],
+            defaultSortBy: 'createdAt',
+            defaultSortOrder: 'desc',
+        });
+
+        // 4. Concurrently query responses and total count
+        const [responses, totalCount] = await Promise.all([
+            prisma.donationResponse.findMany({
+                where: prismaQuery.where,
+                skip: prismaQuery.skip,
+                take: prismaQuery.take,
+                orderBy: prismaQuery.orderBy,
+                include: {
+                    donor: {
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                            profile: {
+                                select: {
+                                    phone: true,
+                                    bloodGroup: true,
+                                    district: true,
+                                    area: true,
+                                    lastDonationDate: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            }),
+            prisma.donationResponse.count({
+                where: prismaQuery.where,
+            }),
+        ]);
+
+        // 5. Calculate standardized pagination metadata
+        const pagination = calculatePaginationMeta(
+            totalCount,
+            prismaQuery.pagination.page,
+            prismaQuery.pagination.limit,
+        );
+
+        // 6. Return response envelope
+        return {
+            responses: responses.map((r) => ({
+                id: r.id,
+                requestId: r.requestId,
+                status: r.status,
+                donorMessage: r.donorMessage,
+                createdAt: r.createdAt.toISOString(),
+                updatedAt: r.updatedAt.toISOString(),
+                donor: {
+                    id: r.donor.id,
+                    name: r.donor.name,
+                    email: r.donor.email,
+                    profile: {
+                        phone: r.donor.profile?.phone ?? '',
+                        bloodGroup: r.donor.profile?.bloodGroup as
+                            | 'A_POS'
+                            | 'A_NEG'
+                            | 'B_POS'
+                            | 'B_NEG'
+                            | 'AB_POS'
+                            | 'AB_NEG'
+                            | 'O_POS'
+                            | 'O_NEG',
+                        district: r.donor.profile?.district ?? '',
+                        area: r.donor.profile?.area ?? '',
+                        lastDonationDate: r.donor.profile?.lastDonationDate
+                            ? r.donor.profile.lastDonationDate.toISOString()
+                            : null,
+                    },
+                },
+            })),
+            pagination,
+        };
+    }
 }
 
 export const responseService = new ResponseService();
-

@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { registry } from '../../docs/registry';
-import { ErrorResponseSchema } from '../../docs/schemas/common.schema';
+import { ErrorResponseSchema, PaginationMetaSchema } from '../../docs/schemas/common.schema';
 import { BloodRequestIdParamSchema } from '../requests/request.schema';
+import { BloodGroupEnum } from '../users/user.schema';
 
 export const ResponseStatusEnum = z.enum(['INTERESTED', 'ACCEPTED', 'REJECTED', 'CANCELLED']);
 
@@ -125,6 +126,134 @@ registry.registerPath({
         },
         409: {
             description: 'Conflict (donor has already responded to this request)',
+            content: {
+                'application/json': {
+                    schema: ErrorResponseSchema,
+                },
+            },
+        },
+    },
+});
+
+export const GetDonorResponsesQuerySchema = registry.register(
+    'GetDonorResponsesQuery',
+    z.object({
+        page: z.coerce.number().int().positive().default(1).openapi({
+            example: 1,
+            description: 'Page number for pagination (minimum: 1)',
+        }),
+        limit: z.coerce.number().int().positive().max(100).default(10).openapi({
+            example: 10,
+            description: 'Number of responses per page (maximum: 100)',
+        }),
+        status: ResponseStatusEnum.optional().openapi({
+            example: 'INTERESTED',
+            description:
+                'Filter responses by status (e.g. INTERESTED, ACCEPTED, REJECTED, CANCELLED)',
+        }),
+        sortBy: z.enum(['createdAt']).default('createdAt').openapi({
+            example: 'createdAt',
+            description: 'Sort field',
+        }),
+        sortOrder: z.enum(['asc', 'desc']).default('desc').openapi({
+            example: 'desc',
+            description: 'Sort ordering',
+        }),
+    }),
+);
+
+export type GetDonorResponsesQuery = z.infer<typeof GetDonorResponsesQuerySchema>;
+
+export const DonorResponseItemSchema = registry.register(
+    'DonorResponseItem',
+    z.object({
+        id: z.string().uuid().openapi({ example: '7fa85f64-5717-4562-b3fc-2c963f66af99' }),
+        requestId: z.string().uuid().openapi({ example: 'e14bea71-fa81-4126-97b1-bc3552996d09' }),
+        status: ResponseStatusEnum.openapi({ example: 'INTERESTED' }),
+        donorMessage: z.string().nullable().openapi({
+            example: 'I am nearby and can reach Dhaka Medical College by 3 PM.',
+        }),
+        createdAt: z.string().datetime().openapi({ example: '2026-11-06T02:15:00.000Z' }),
+        updatedAt: z.string().datetime().openapi({ example: '2026-11-06T02:15:00.000Z' }),
+        donor: z.object({
+            id: z.string().uuid().openapi({ example: '8b2c6a2e-10e9-4cf1-904c-e9f5b53b0a47' }),
+            name: z.string().openapi({ example: 'Jane Doe' }),
+            email: z.string().email().openapi({ example: 'donor@example.com' }),
+            profile: z.object({
+                phone: z.string().openapi({ example: '01712345678' }),
+                bloodGroup: BloodGroupEnum.openapi({ example: 'O_POS' }),
+                district: z.string().openapi({ example: 'Dhaka' }),
+                area: z.string().openapi({ example: 'Dhanmondi' }),
+                lastDonationDate: z.string().datetime().nullable().openapi({
+                    example: '2026-08-01T00:00:00.000Z',
+                }),
+            }),
+        }),
+    }),
+);
+
+export const GetDonorResponsesResponseSchema = registry.register(
+    'GetDonorResponsesResponse',
+    z.object({
+        success: z.literal(true).openapi({ example: true }),
+        statusCode: z.literal(200).openapi({ example: 200 }),
+        message: z.string().openapi({
+            example: 'Donor responses retrieved successfully',
+        }),
+        data: z.object({
+            responses: z.array(DonorResponseItemSchema),
+            pagination: PaginationMetaSchema,
+        }),
+    }),
+);
+
+registry.registerPath({
+    method: 'get',
+    path: '/api/v1/requests/{id}/responses',
+    tags: ['Donor Responses'],
+    summary: 'List responding donors for a blood request',
+    description:
+        'Retrieves a paginated list of donors who have responded to a blood donation request with full verified contact information. Accessible strictly by the original requester or an ADMIN.',
+    security: [{ bearerAuth: [] }],
+    request: {
+        params: BloodRequestIdParamSchema,
+        query: GetDonorResponsesQuerySchema,
+    },
+    responses: {
+        200: {
+            description: 'Donor responses retrieved successfully',
+            content: {
+                'application/json': {
+                    schema: GetDonorResponsesResponseSchema,
+                },
+            },
+        },
+        400: {
+            description: 'Validation error (invalid query parameters or UUID format)',
+            content: {
+                'application/json': {
+                    schema: ErrorResponseSchema,
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized (missing or invalid Bearer JWT token)',
+            content: {
+                'application/json': {
+                    schema: ErrorResponseSchema,
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden (caller is neither the original requester nor an ADMIN)',
+            content: {
+                'application/json': {
+                    schema: ErrorResponseSchema,
+                },
+            },
+        },
+        404: {
+            description: 'Blood donation request not found',
             content: {
                 'application/json': {
                     schema: ErrorResponseSchema,
