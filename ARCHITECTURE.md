@@ -297,7 +297,7 @@ model DonationResponse {
 | :----- | :------ | :----------------------------- | :------------------------ | :----------------------------------------------------------- |
 | ✅     | `POST`  | `/api/v1/requests`             | `USER` (Profile Complete) | Create new request (enters `PENDING_APPROVAL`)               |
 | ✅     | `GET`   | `/api/v1/requests`             | Public / `USER`           | Filter & paginate `ACTIVE` requests                          |
-| ❌     | `GET`   | `/api/v1/requests/pending`     | `ADMIN`                   | List all requests awaiting verification (`PENDING_APPROVAL`) |
+| ✅     | `GET`   | `/api/v1/requests/pending`     | `ADMIN`                   | List all requests awaiting verification (`PENDING_APPROVAL`) |
 | ✅     | `GET`   | `/api/v1/requests/:id`         | Public / `USER`           | Retrieve request details                                     |
 | ❌     | `PATCH` | `/api/v1/requests/:id/approve` | `ADMIN`                   | Transition request from `PENDING_APPROVAL` to `ACTIVE`       |
 | ❌     | `PATCH` | `/api/v1/requests/:id/reject`  | `ADMIN`                   | Transition request from `PENDING_APPROVAL` to `REJECTED`     |

@@ -10,18 +10,18 @@ userRouter.get('/me', checkAuth(), getMeHandler);
 
 // POST /api/v1/users/complete-profile (Step 2 Onboarding)
 userRouter.post(
-  '/complete-profile',
-  checkAuth(),
-  validateRequest(CompleteProfileInputSchema),
-  completeProfileHandler,
+    '/complete-profile',
+    checkAuth(),
+    validateRequest(CompleteProfileInputSchema),
+    completeProfileHandler,
 );
 
 // PATCH /api/v1/users/availability (Toggle or set donation availability)
 userRouter.patch(
-  '/availability',
-  checkAuth(),
-  validateRequest(UpdateAvailabilityInputSchema),
-  updateAvailabilityHandler,
+    '/availability',
+    checkAuth(),
+    validateRequest(UpdateAvailabilityInputSchema),
+    updateAvailabilityHandler,
 );
 
 export { userRouter };

@@ -8,8 +8,8 @@ export const registry = new OpenAPIRegistry();
 
 // Register JWT Bearer Authentication security scheme
 registry.registerComponent('securitySchemes', 'bearerAuth', {
-  type: 'http',
-  scheme: 'bearer',
-  bearerFormat: 'JWT',
-  description: 'Provide a valid JWT token in format: Bearer <token>',
+    type: 'http',
+    scheme: 'bearer',
+    bearerFormat: 'JWT',
+    description: 'Provide a valid JWT token in format: Bearer <token>',
 });

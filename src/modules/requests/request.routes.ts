@@ -1,45 +1,54 @@
 import { Router } from 'express';
 import {
-  checkAuth,
-  optionalAuth,
-  requireProfileComplete,
-  validateRequest,
+    checkAuth,
+    optionalAuth,
+    requireProfileComplete,
+    validateRequest,
 } from '../../middlewares';
 import {
-  createRequestHandler,
-  getActiveRequestsHandler,
-  getRequestByIdHandler,
+    createRequestHandler,
+    getActiveRequestsHandler,
+    getPendingRequestsHandler,
+    getRequestByIdHandler,
 } from './request.controller';
 import {
-  BloodRequestIdParamSchema,
-  CreateBloodRequestInputSchema,
-  GetBloodRequestsQuerySchema,
+    BloodRequestIdParamSchema,
+    CreateBloodRequestInputSchema,
+    GetBloodRequestsQuerySchema,
 } from './request.schema';
 
 const requestRouter = Router();
 
 // GET /api/v1/requests (List active blood donation requests - Public Feed)
 requestRouter.get(
-  '/',
-  validateRequest(GetBloodRequestsQuerySchema, 'query'),
-  getActiveRequestsHandler,
+    '/',
+    validateRequest(GetBloodRequestsQuerySchema, 'query'),
+    getActiveRequestsHandler,
+);
+
+// GET /api/v1/requests/pending (List pending blood donation requests - Admin Only)
+requestRouter.get(
+    '/pending',
+    checkAuth('ADMIN'),
+    validateRequest(GetBloodRequestsQuerySchema, 'query'),
+    getPendingRequestsHandler,
 );
 
 // GET /api/v1/requests/:id (Retrieve blood donation request details - Public / Authenticated)
 requestRouter.get(
-  '/:id',
-  optionalAuth,
-  validateRequest(BloodRequestIdParamSchema, 'params'),
-  getRequestByIdHandler,
+    '/:id',
+    optionalAuth,
+    validateRequest(BloodRequestIdParamSchema, 'params'),
+    getRequestByIdHandler,
 );
 
 // POST /api/v1/requests (Create a new blood donation request)
 requestRouter.post(
-  '/',
-  checkAuth(),
-  requireProfileComplete,
-  validateRequest(CreateBloodRequestInputSchema),
-  createRequestHandler,
+    '/',
+    checkAuth(),
+    requireProfileComplete,
+    validateRequest(CreateBloodRequestInputSchema),
+    createRequestHandler,
 );
 
 export { requestRouter };

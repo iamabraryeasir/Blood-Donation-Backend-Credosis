@@ -7,7 +7,7 @@ type AsyncRequestHandler = (req: Request, res: Response, next: NextFunction) => 
  * and automatically forwards unhandled errors to the global error middleware.
  */
 export const catchAsync = (fn: AsyncRequestHandler): RequestHandler => {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    Promise.resolve(fn(req, res, next)).catch(next);
-  };
+    return (req: Request, res: Response, next: NextFunction): void => {
+        Promise.resolve(fn(req, res, next)).catch(next);
+    };
 };

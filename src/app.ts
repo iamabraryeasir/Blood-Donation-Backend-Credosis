@@ -6,10 +6,10 @@ import { env } from './config/env';
 import { redisClient } from './config/redis';
 import { swaggerRouter } from './docs';
 import {
-  globalErrorHandler,
-  globalRateLimiter,
-  notFoundHandler,
-  requestLogger,
+    globalErrorHandler,
+    globalRateLimiter,
+    notFoundHandler,
+    requestLogger,
 } from './middlewares';
 import { rootRouter } from './routes';
 
@@ -20,23 +20,23 @@ app.disable('x-powered-by');
 
 // Security HTTP headers
 app.use(
-  helmet({
-    crossOriginResourcePolicy: { policy: 'cross-origin' },
-  }),
+    helmet({
+        crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
 );
 
 // Cross-Origin Resource Sharing (CORS)
 app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || env.CORS_ORIGIN === '*' || env.CORS_ORIGIN.split(',').includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
-    credentials: true,
-  }),
+    cors({
+        origin: (origin, callback) => {
+            if (!origin || env.CORS_ORIGIN === '*' || env.CORS_ORIGIN.split(',').includes(origin)) {
+                callback(null, true);
+            } else {
+                callback(new Error('Not allowed by CORS'));
+            }
+        },
+        credentials: true,
+    }),
 );
 
 // Global Rate Limiting
@@ -54,24 +54,24 @@ app.use(cookieParser());
 
 // Liveness & health check endpoint
 app.get('/health', (_req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'Blood Donation Platform API is healthy',
-    data: {
-      status: 'UP',
-      uptime: process.uptime(),
-      timestamp: new Date().toISOString(),
-      environment: env.NODE_ENV,
-      services: {
-        redis: redisClient.isOpen ? 'CONNECTED' : 'DISCONNECTED',
-      },
-    },
-  });
+    res.status(200).json({
+        success: true,
+        message: 'Blood Donation Platform API is healthy',
+        data: {
+            status: 'UP',
+            uptime: process.uptime(),
+            timestamp: new Date().toISOString(),
+            environment: env.NODE_ENV,
+            services: {
+                redis: redisClient.isOpen ? 'CONNECTED' : 'DISCONNECTED',
+            },
+        },
+    });
 });
 
 // API Documentation (Swagger UI & OpenAPI JSON Spec)
 if (env.ENABLE_DOCS) {
-  app.use('/api-docs', swaggerRouter);
+    app.use('/api-docs', swaggerRouter);
 }
 
 // Modular domain routes under /api/v1

@@ -16,32 +16,32 @@ import { prisma } from '../utils/prisma';
  * router.post('/resource', checkAuth('USER', 'ADMIN'), handler); // USER or ADMIN
  */
 export const checkAuth = (...allowedRoles: Role[]) => {
-  return (req: Request, _res: Response, next: NextFunction): void => {
-    const authHeader = req.headers.authorization;
+    return (req: Request, _res: Response, next: NextFunction): void => {
+        const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new AppError('Unauthorized: Authentication token is required', 401);
-    }
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            throw new AppError('Unauthorized: Authentication token is required', 401);
+        }
 
-    const token = authHeader.split(' ')[1];
-    if (!token) {
-      throw new AppError('Unauthorized: Authentication token is required', 401);
-    }
+        const token = authHeader.split(' ')[1];
+        if (!token) {
+            throw new AppError('Unauthorized: Authentication token is required', 401);
+        }
 
-    try {
-      const payload = verifyAccessToken(token);
-      req.user = payload;
-    } catch {
-      throw new AppError('Unauthorized: Invalid or expired token', 401);
-    }
+        try {
+            const payload = verifyAccessToken(token);
+            req.user = payload;
+        } catch {
+            throw new AppError('Unauthorized: Invalid or expired token', 401);
+        }
 
-    // Role-based authorization check (only if specific roles are constrained)
-    if (allowedRoles.length > 0 && !allowedRoles.includes(req.user.role)) {
-      throw new AppError('Forbidden: Insufficient privileges', 403);
-    }
+        // Role-based authorization check (only if specific roles are constrained)
+        if (allowedRoles.length > 0 && !allowedRoles.includes(req.user.role)) {
+            throw new AppError('Forbidden: Insufficient privileges', 403);
+        }
 
-    next();
-  };
+        next();
+    };
 };
 
 /**
@@ -50,57 +50,57 @@ export const checkAuth = (...allowedRoles: Role[]) => {
  * If the header is missing, malformed, or the token is invalid, it simply proceeds without req.user.
  */
 export const optionalAuth = (req: Request, _res: Response, next: NextFunction): void => {
-  const authHeader = req.headers.authorization;
+    const authHeader = req.headers.authorization;
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        next();
+        return;
+    }
+
+    const token = authHeader.split(' ')[1];
+    if (!token) {
+        next();
+        return;
+    }
+
+    try {
+        const payload = verifyAccessToken(token);
+        req.user = payload;
+    } catch {
+        // Gracefully ignore token errors for optional authentication
+    }
+
     next();
-    return;
-  }
-
-  const token = authHeader.split(' ')[1];
-  if (!token) {
-    next();
-    return;
-  }
-
-  try {
-    const payload = verifyAccessToken(token);
-    req.user = payload;
-  } catch {
-    // Gracefully ignore token errors for optional authentication
-  }
-
-  next();
 };
 
 /**
  * Middleware to enforce that the authenticated user has completed Step 2 Profile setup.
  */
 export const requireProfileComplete = async (
-  req: Request,
-  _res: Response,
-  next: NextFunction,
+    req: Request,
+    _res: Response,
+    next: NextFunction,
 ): Promise<void> => {
-  if (!req.user) {
-    throw new AppError('Unauthorized: Authentication required', 401);
-  }
+    if (!req.user) {
+        throw new AppError('Unauthorized: Authentication required', 401);
+    }
 
-  const user = await prisma.user.findUnique({
-    where: { id: req.user.userId },
-    select: { isProfileComplete: true, isVerified: true },
-  });
+    const user = await prisma.user.findUnique({
+        where: { id: req.user.userId },
+        select: { isProfileComplete: true, isVerified: true },
+    });
 
-  if (!user) {
-    throw new AppError('User account not found', 404);
-  }
+    if (!user) {
+        throw new AppError('User account not found', 404);
+    }
 
-  if (!user.isVerified) {
-    throw new AppError('Your account is not verified. Please verify your email first.', 403);
-  }
+    if (!user.isVerified) {
+        throw new AppError('Your account is not verified. Please verify your email first.', 403);
+    }
 
-  if (!user.isProfileComplete) {
-    throw new AppError('You must complete your profile before creating a blood request', 403);
-  }
+    if (!user.isProfileComplete) {
+        throw new AppError('You must complete your profile before creating a blood request', 403);
+    }
 
-  next();
+    next();
 };
