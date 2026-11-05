@@ -289,7 +289,7 @@ model DonationResponse {
 | :----- | :------ | :------------------------------- | :----- | :-------------------------------------------------- |
 | ✅     | `POST`  | `/api/v1/users/complete-profile` | `USER` | Step 2 profile setup (blood group, phone, district) |
 | ✅     | `GET`   | `/api/v1/users/me`               | `USER` | Get authenticated user profile and donation metrics |
-| ❌     | `PATCH` | `/api/v1/users/availability`     | `USER` | Toggle `isAvailableForDonation`                     |
+| ✅     | `PATCH` | `/api/v1/users/availability`     | `USER` | Toggle `isAvailableForDonation`                     |
 
 ### Blood Requests (`/api/v1/requests`)
 

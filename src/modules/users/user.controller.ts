@@ -31,3 +31,18 @@ export const getMeHandler = catchAsync(async (req, res) => {
     data: result,
   });
 });
+
+export const updateAvailabilityHandler = catchAsync(async (req, res) => {
+  if (!req.user) {
+    throw new AppError('Unauthorized: Authentication required', 401);
+  }
+
+  const result = await userService.updateAvailability(req.user.userId, req.body);
+
+  res.status(200).json({
+    success: true,
+    statusCode: 200,
+    message: 'Donation availability updated successfully',
+    data: result,
+  });
+});

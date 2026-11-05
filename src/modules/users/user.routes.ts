@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticate, authorize, validateRequest } from '../../middlewares';
-import { completeProfileHandler, getMeHandler } from './user.controller';
-import { CompleteProfileInputSchema } from './user.schema';
+import { completeProfileHandler, getMeHandler, updateAvailabilityHandler } from './user.controller';
+import { CompleteProfileInputSchema, UpdateAvailabilityInputSchema } from './user.schema';
 
 const userRouter = Router();
 
@@ -15,6 +15,15 @@ userRouter.post(
   authorize('USER', 'ADMIN'),
   validateRequest(CompleteProfileInputSchema),
   completeProfileHandler,
+);
+
+// PATCH /api/v1/users/availability (Toggle or set donation availability)
+userRouter.patch(
+  '/availability',
+  authenticate,
+  authorize('USER', 'ADMIN'),
+  validateRequest(UpdateAvailabilityInputSchema),
+  updateAvailabilityHandler,
 );
 
 export { userRouter };

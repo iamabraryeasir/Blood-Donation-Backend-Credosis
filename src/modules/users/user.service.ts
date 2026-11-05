@@ -1,6 +1,6 @@
 import { AppError } from '../../errors';
 import { prisma } from '../../utils/prisma';
-import type { CompleteProfileInput } from './user.schema';
+import type { CompleteProfileInput, UpdateAvailabilityInput } from './user.schema';
 
 export class UserService {
   /**
@@ -196,6 +196,76 @@ export class UserService {
         daysSinceLastDonation,
         daysUntilNextDonation,
         nextEligibleDonationDate,
+      },
+    };
+  }
+
+  /**
+   * Update donor availability status (isAvailableForDonation)
+   * and recalculate dynamic eligibility.
+   */
+  async updateAvailability(userId: string, input: UpdateAvailabilityInput) {
+    // 1. Fetch user profile
+    const profile = await prisma.profile.findUnique({
+      where: { userId },
+    });
+
+    if (!profile) {
+      throw new AppError('Profile must be completed before updating donation availability', 400);
+    }
+
+    // 2. Update availability in database
+    const updatedProfile = await prisma.profile.update({
+      where: { userId },
+      data: {
+        isAvailableForDonation: input.isAvailableForDonation,
+      },
+      select: {
+        id: true,
+        bloodGroup: true,
+        phone: true,
+        district: true,
+        area: true,
+        lastDonationDate: true,
+        isAvailableForDonation: true,
+        updatedAt: true,
+      },
+    });
+
+    // 3. Dynamic cooldown check
+    const COOLDOWN_DAYS = 90;
+    let isEligibleToDonate = false;
+    let daysSinceLastDonation: number | null = null;
+    let daysUntilNextDonation: number | null = null;
+
+    if (!updatedProfile.lastDonationDate) {
+      isEligibleToDonate = updatedProfile.isAvailableForDonation;
+      daysSinceLastDonation = null;
+      daysUntilNextDonation = 0;
+    } else {
+      const lastDonationTime = updatedProfile.lastDonationDate.getTime();
+      const now = Date.now();
+      const diffInMs = now - lastDonationTime;
+      const daysElapsed = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+
+      daysSinceLastDonation = Math.max(0, daysElapsed);
+
+      if (daysElapsed >= COOLDOWN_DAYS) {
+        isEligibleToDonate = updatedProfile.isAvailableForDonation;
+        daysUntilNextDonation = 0;
+      } else {
+        isEligibleToDonate = false;
+        daysUntilNextDonation = COOLDOWN_DAYS - daysElapsed;
+      }
+    }
+
+    return {
+      profile: updatedProfile,
+      eligibility: {
+        isAvailable: updatedProfile.isAvailableForDonation,
+        isEligibleToDonate,
+        daysSinceLastDonation,
+        daysUntilNextDonation,
       },
     };
   }
