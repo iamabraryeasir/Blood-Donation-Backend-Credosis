@@ -1,6 +1,7 @@
 import { OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
 import { env } from '../config/env';
 import '../modules/auth/auth.schema';
+import '../modules/users/user.schema';
 import { registry } from './registry';
 import './routes/system.doc';
 
@@ -37,6 +38,10 @@ export const generateOpenApiSpec = (): OpenApiDocument => {
       {
         name: 'Auth',
         description: 'Authentication, registration staging, and verification endpoints',
+      },
+      {
+        name: 'Users',
+        description: 'User profile management and donor availability endpoints',
       },
     ],
   });

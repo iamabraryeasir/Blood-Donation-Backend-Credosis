@@ -15,4 +15,3 @@ userRouter.post(
 );
 
 export { userRouter };
-

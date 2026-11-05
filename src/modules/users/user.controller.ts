@@ -16,4 +16,3 @@ export const completeProfileHandler = catchAsync(async (req, res) => {
     data: result,
   });
 });
-
