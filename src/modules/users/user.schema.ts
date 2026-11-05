@@ -149,3 +149,98 @@ registry.registerPath({
     },
   },
 });
+
+export const UserProfileResponseSchema = registry.register(
+  'UserProfileResponse',
+  z.object({
+    success: z.literal(true).openapi({ example: true }),
+    statusCode: z.literal(200).openapi({ example: 200 }),
+    message: z.string().openapi({
+      example: 'User profile and donation metrics retrieved successfully',
+    }),
+    data: z.object({
+      user: z.object({
+        id: z.string().uuid().openapi({ example: 'e4b2d354-9a57-4f51-b8d2-5a9e3240e111' }),
+        name: z.string().openapi({ example: 'Abrar Yeasir' }),
+        email: z.string().openapi({ example: 'abrar@example.com' }),
+        role: z.enum(['USER', 'ADMIN']).openapi({ example: 'USER' }),
+        isVerified: z.boolean().openapi({ example: true }),
+        isProfileComplete: z.boolean().openapi({ example: true }),
+        createdAt: z.string().datetime().openapi({ example: '2026-11-05T02:00:00.000Z' }),
+      }),
+      profile: z
+        .object({
+          id: z.string().uuid().openapi({ example: '7b8a1c9e-9a57-4f51-b8d2-5a9e3240e222' }),
+          bloodGroup: BloodGroupEnum.openapi({ example: 'O_POS' }),
+          phone: z.string().openapi({ example: '01712345678' }),
+          district: z.string().openapi({ example: 'Dhaka' }),
+          area: z.string().openapi({ example: 'Mirpur 10' }),
+          lastDonationDate: z.string().nullable().openapi({ example: '2026-08-01T00:00:00.000Z' }),
+          isAvailableForDonation: z.boolean().openapi({ example: true }),
+          createdAt: z.string().datetime().openapi({ example: '2026-11-05T22:20:00.000Z' }),
+        })
+        .nullable()
+        .openapi({ example: null }),
+      metrics: z.object({
+        totalRequestsCreated: z.number().openapi({ example: 2 }),
+        totalRequestsFulfilled: z.number().openapi({ example: 1 }),
+        totalDonationsOffered: z.number().openapi({ example: 3 }),
+        totalDonationsCompleted: z.number().openapi({ example: 2 }),
+      }),
+      eligibility: z.object({
+        isAvailable: z.boolean().openapi({ example: true }),
+        isEligibleToDonate: z.boolean().openapi({ example: true }),
+        daysSinceLastDonation: z.number().nullable().openapi({ example: 96 }),
+        daysUntilNextDonation: z.number().nullable().openapi({ example: 0 }),
+        nextEligibleDonationDate: z
+          .string()
+          .nullable()
+          .openapi({ example: '2026-10-30T00:00:00.000Z' }),
+      }),
+    }),
+  }),
+);
+
+registry.registerPath({
+  method: 'get',
+  path: '/api/v1/users/me',
+  tags: ['Users'],
+  summary: 'Get authenticated user profile and donation metrics',
+  description:
+    'Retrieves the current user identity, profile details, historical donation metrics, and dynamic 90-day cooldown eligibility calculations.',
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: {
+      description: 'Profile and metrics retrieved successfully',
+      content: {
+        'application/json': {
+          schema: UserProfileResponseSchema,
+        },
+      },
+    },
+    401: {
+      description: 'Unauthorized (missing or invalid Bearer JWT token)',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    403: {
+      description: 'Forbidden (insufficient permissions)',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+    404: {
+      description: 'User account not found',
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema,
+        },
+      },
+    },
+  },
+});

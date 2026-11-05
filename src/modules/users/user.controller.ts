@@ -16,3 +16,18 @@ export const completeProfileHandler = catchAsync(async (req, res) => {
     data: result,
   });
 });
+
+export const getMeHandler = catchAsync(async (req, res) => {
+  if (!req.user) {
+    throw new AppError('Unauthorized: Authentication required', 401);
+  }
+
+  const result = await userService.getMe(req.user.userId);
+
+  res.status(200).json({
+    success: true,
+    statusCode: 200,
+    message: 'User profile and donation metrics retrieved successfully',
+    data: result,
+  });
+});
