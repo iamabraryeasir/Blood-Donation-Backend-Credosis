@@ -509,3 +509,169 @@ registry.registerPath({
         },
     },
 });
+
+export const ApproveBloodRequestResponseSchema = registry.register(
+    'ApproveBloodRequestResponse',
+    z.object({
+        success: z.literal(true).openapi({ example: true }),
+        statusCode: z.literal(200).openapi({ example: 200 }),
+        message: z.string().openapi({
+            example: 'Blood donation request approved successfully and is now active',
+        }),
+        data: z.object({
+            request: PendingBloodRequestItemSchema,
+        }),
+    }),
+);
+
+registry.registerPath({
+    method: 'patch',
+    path: '/api/v1/requests/{id}/approve',
+    tags: ['Requests'],
+    summary: 'Approve a pending blood request (Admin Only)',
+    description:
+        'Transitions a blood donation request from PENDING_APPROVAL to ACTIVE status. Once active, the request is visible on the public feed and open for donor matching.',
+    security: [{ bearerAuth: [] }],
+    request: {
+        params: BloodRequestIdParamSchema,
+    },
+    responses: {
+        200: {
+            description: 'Blood request approved successfully',
+            content: {
+                'application/json': {
+                    schema: ApproveBloodRequestResponseSchema,
+                },
+            },
+        },
+        400: {
+            description: 'Invalid transition (request not in PENDING_APPROVAL status)',
+            content: {
+                'application/json': {
+                    schema: ErrorResponseSchema,
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized (missing or invalid Bearer JWT token)',
+            content: {
+                'application/json': {
+                    schema: ErrorResponseSchema,
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden (admin privileges required)',
+            content: {
+                'application/json': {
+                    schema: ErrorResponseSchema,
+                },
+            },
+        },
+        404: {
+            description: 'Blood donation request not found',
+            content: {
+                'application/json': {
+                    schema: ErrorResponseSchema,
+                },
+            },
+        },
+    },
+});
+
+export const RejectBloodRequestInputSchema = registry.register(
+    'RejectBloodRequestInput',
+    z.object({
+        reason: z
+            .string({ required_error: 'Rejection reason is required' })
+            .trim()
+            .min(5, 'Rejection reason must be at least 5 characters')
+            .max(500, 'Rejection reason cannot exceed 500 characters')
+            .openapi({
+                example: 'Incomplete or unverified hospital admission documentation',
+                description: 'Administrative reason for rejecting the request',
+            }),
+    }),
+);
+
+export type RejectBloodRequestInput = z.infer<typeof RejectBloodRequestInputSchema>;
+
+export const RejectBloodRequestResponseSchema = registry.register(
+    'RejectBloodRequestResponse',
+    z.object({
+        success: z.literal(true).openapi({ example: true }),
+        statusCode: z.literal(200).openapi({ example: 200 }),
+        message: z.string().openapi({
+            example: 'Blood donation request rejected successfully',
+        }),
+        data: z.object({
+            request: PendingBloodRequestItemSchema.extend({
+                rejectionReason: z.string().nullable().openapi({
+                    example: 'Incomplete or unverified hospital admission documentation',
+                }),
+            }),
+        }),
+    }),
+);
+
+registry.registerPath({
+    method: 'patch',
+    path: '/api/v1/requests/{id}/reject',
+    tags: ['Requests'],
+    summary: 'Reject a pending blood request (Admin Only)',
+    description:
+        'Denies a blood donation request in PENDING_APPROVAL status with a mandatory administrative justification reason.',
+    security: [{ bearerAuth: [] }],
+    request: {
+        params: BloodRequestIdParamSchema,
+        body: {
+            content: {
+                'application/json': {
+                    schema: RejectBloodRequestInputSchema,
+                },
+            },
+        },
+    },
+    responses: {
+        200: {
+            description: 'Blood request rejected successfully',
+            content: {
+                'application/json': {
+                    schema: RejectBloodRequestResponseSchema,
+                },
+            },
+        },
+        400: {
+            description: 'Validation error or invalid status transition',
+            content: {
+                'application/json': {
+                    schema: ErrorResponseSchema,
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized (missing or invalid Bearer JWT token)',
+            content: {
+                'application/json': {
+                    schema: ErrorResponseSchema,
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden (admin privileges required)',
+            content: {
+                'application/json': {
+                    schema: ErrorResponseSchema,
+                },
+            },
+        },
+        404: {
+            description: 'Blood donation request not found',
+            content: {
+                'application/json': {
+                    schema: ErrorResponseSchema,
+                },
+            },
+        },
+    },
+});

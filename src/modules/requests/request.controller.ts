@@ -42,6 +42,32 @@ export const getRequestByIdHandler = catchAsync(async (req, res) => {
     });
 });
 
+export const approveRequestHandler = catchAsync(async (req, res) => {
+    const result = await requestService.approveRequest(req.params.id as string);
+
+    res.status(200).json({
+        success: true,
+        statusCode: 200,
+        message: 'Blood donation request approved successfully and is now active',
+        data: {
+            request: result,
+        },
+    });
+});
+
+export const rejectRequestHandler = catchAsync(async (req, res) => {
+    const result = await requestService.rejectRequest(req.params.id as string, req.body);
+
+    res.status(200).json({
+        success: true,
+        statusCode: 200,
+        message: 'Blood donation request rejected successfully',
+        data: {
+            request: result,
+        },
+    });
+});
+
 export const createRequestHandler = catchAsync(async (req, res) => {
     if (!req.user) {
         throw new AppError('Unauthorized: Authentication required', 401);

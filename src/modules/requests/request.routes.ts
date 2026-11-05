@@ -6,15 +6,18 @@ import {
     validateRequest,
 } from '../../middlewares';
 import {
+    approveRequestHandler,
     createRequestHandler,
     getActiveRequestsHandler,
     getPendingRequestsHandler,
     getRequestByIdHandler,
+    rejectRequestHandler,
 } from './request.controller';
 import {
     BloodRequestIdParamSchema,
     CreateBloodRequestInputSchema,
     GetBloodRequestsQuerySchema,
+    RejectBloodRequestInputSchema,
 } from './request.schema';
 
 const requestRouter = Router();
@@ -40,6 +43,23 @@ requestRouter.get(
     optionalAuth,
     validateRequest(BloodRequestIdParamSchema, 'params'),
     getRequestByIdHandler,
+);
+
+// PATCH /api/v1/requests/:id/approve (Approve pending blood donation request - Admin Only)
+requestRouter.patch(
+    '/:id/approve',
+    checkAuth('ADMIN'),
+    validateRequest(BloodRequestIdParamSchema, 'params'),
+    approveRequestHandler,
+);
+
+// PATCH /api/v1/requests/:id/reject (Reject pending blood donation request - Admin Only)
+requestRouter.patch(
+    '/:id/reject',
+    checkAuth('ADMIN'),
+    validateRequest(BloodRequestIdParamSchema, 'params'),
+    validateRequest(RejectBloodRequestInputSchema, 'body'),
+    rejectRequestHandler,
 );
 
 // POST /api/v1/requests (Create a new blood donation request)

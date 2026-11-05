@@ -3,7 +3,11 @@ import { AppError } from '../../errors';
 import type { JwtUserPayload } from '../../utils/jwt';
 import { prisma } from '../../utils/prisma';
 import { buildPrismaQuery, calculatePaginationMeta } from '../../utils/queryBuilder';
-import type { CreateBloodRequestInput, GetBloodRequestsQuery } from './request.schema';
+import type {
+    CreateBloodRequestInput,
+    GetBloodRequestsQuery,
+    RejectBloodRequestInput,
+} from './request.schema';
 
 export class RequestService {
     /**
@@ -248,6 +252,94 @@ export class RequestService {
         });
 
         return newRequest;
+    }
+
+    /**
+     * Approve a blood donation request (Admin action).
+     * Transitions status from PENDING_APPROVAL to ACTIVE.
+     */
+    async approveRequest(requestId: string) {
+        const existing = await prisma.bloodRequest.findUnique({
+            where: { id: requestId },
+        });
+
+        if (!existing) {
+            throw new AppError('Blood donation request not found', 404);
+        }
+
+        if (existing.status === 'ACTIVE') {
+            throw new AppError('Request is already approved and active', 400);
+        }
+
+        if (existing.status !== 'PENDING_APPROVAL') {
+            throw new AppError(
+                `Cannot approve request with status '${existing.status}'. Only PENDING_APPROVAL requests can be approved.`,
+                400,
+            );
+        }
+
+        const updatedRequest = await prisma.bloodRequest.update({
+            where: { id: requestId },
+            data: {
+                status: 'ACTIVE',
+                rejectionReason: null,
+            },
+            include: {
+                requester: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+            },
+        });
+
+        return updatedRequest;
+    }
+
+    /**
+     * Reject a blood donation request (Admin action).
+     * Transitions status from PENDING_APPROVAL to REJECTED with a mandatory reason.
+     */
+    async rejectRequest(requestId: string, input: RejectBloodRequestInput) {
+        const existing = await prisma.bloodRequest.findUnique({
+            where: { id: requestId },
+        });
+
+        if (!existing) {
+            throw new AppError('Blood donation request not found', 404);
+        }
+
+        if (existing.status === 'REJECTED') {
+            throw new AppError('Request has already been rejected', 400);
+        }
+
+        if (existing.status !== 'PENDING_APPROVAL') {
+            throw new AppError(
+                `Cannot reject request with status '${existing.status}'. Only PENDING_APPROVAL requests can be rejected.`,
+                400,
+            );
+        }
+
+        const updatedRequest = await prisma.bloodRequest.update({
+            where: { id: requestId },
+            data: {
+                status: 'REJECTED',
+                rejectionReason: input.reason.trim(),
+            },
+            include: {
+                requester: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+            },
+        });
+
+        return updatedRequest;
     }
 }
 
