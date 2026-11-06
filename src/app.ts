@@ -60,7 +60,7 @@ app.use(cookieParser());
 app.get('/', (_req, res) => {
     res.status(200).json({
         success: true,
-        message: 'Blood Donation Platform API is live and operational',
+        message: 'Blood Donation System API is live and operational',
         environment: env.NODE_ENV,
         health: '/health',
         api: '/api/v1',
@@ -72,7 +72,7 @@ app.get('/', (_req, res) => {
 app.get(['/health', '/api/v1/health'], (_req, res) => {
     res.status(200).json({
         success: true,
-        message: 'Blood Donation Platform API is healthy',
+        message: 'Blood Donation System API is healthy',
         data: {
             status: 'UP',
             uptime: process.uptime(),

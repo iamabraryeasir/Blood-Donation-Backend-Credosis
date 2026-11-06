@@ -24,7 +24,7 @@ const startServer = async (): Promise<void> => {
 
         server = app.listen(env.PORT, '0.0.0.0', () => {
             console.log('=======================================================');
-            console.log('  Blood Donation Platform API Server Running');
+            console.log('  Blood Donation System API Server Running');
             console.log(`  Environment : ${env.NODE_ENV}`);
             console.log(`  Port        : ${env.PORT}`);
             console.log(`  Health Check: ${baseUrl}/health`);

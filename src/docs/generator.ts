@@ -38,7 +38,7 @@ export const generateOpenApiSpec = (): OpenApiDocument => {
     return generator.generateDocument({
         openapi: '3.0.0',
         info: {
-            title: 'Blood Donation Platform API',
+            title: 'Blood Donation System API',
             version: '1.0.0',
             description:
                 'Production-grade RESTful API specification for the Blood Donation Platform backend. Built with Express, TypeScript, Prisma, and Zod.',
